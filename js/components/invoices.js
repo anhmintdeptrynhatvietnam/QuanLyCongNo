@@ -285,7 +285,7 @@ export class InvoicesView extends BaseComponent {
         <div class="form-group">
           <label class="form-label">Tổng Tiền Hóa Đơn (VNĐ) <span class="required">*</span></label>
           <div class="input-group">
-            <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-total-amount" value="${formatCurrency(invoice ? invoice.totalAmount : 50000000, false)}" placeholder="0" required>
+            <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-total-amount" value="${invoice ? formatCurrency(invoice.totalAmount, false) : ''}" placeholder="0" required>
             <span class="input-group-text">VNĐ</span>
           </div>
           <div class="currency-preview-text" id="inv-total-amount-preview"></div>

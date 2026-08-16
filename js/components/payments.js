@@ -213,7 +213,7 @@ export class PaymentsView extends BaseComponent {
           <div class="form-group">
             <label class="form-label">Số Tiền Thanh Toán (VNĐ) <span class="required">*</span></label>
             <div class="input-group">
-              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="pay-amount" value="${formatCurrency(50000000, false)}" placeholder="0" required>
+              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="pay-amount" value="" placeholder="0" required>
               <span class="input-group-text">VNĐ</span>
             </div>
             <div class="currency-preview-text" id="pay-amount-preview"></div>

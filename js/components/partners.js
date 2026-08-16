@@ -185,13 +185,13 @@ export class PartnersView extends BaseComponent {
       <form id="partner-form">
         <div class="form-group">
           <label class="form-label">Tên Đối Tác <span class="required">*</span></label>
-          <input type="text" class="form-control" id="p-name" required value="${escapeHtml(partner ? partner.name : '')}" placeholder="VD: Công ty Cổ phần Vinamilk">
+          <input type="text" class="form-control" id="p-name" required value="${escapeHtml(partner ? partner.name : '')}" placeholder="VD: Công ty Cổ phần Thương mại ABC">
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
             <label class="form-label">Mã Đối Tác</label>
-            <input type="text" class="form-control" id="p-code" value="${escapeHtml(partner ? (partner.code || partner.id) : '')}" placeholder="VD: KH-VINAMILK">
+            <input type="text" class="form-control" id="p-code" value="${escapeHtml(partner ? (partner.code || partner.id) : '')}" placeholder="VD: KH-ABC01">
           </div>
           <div class="form-group">
             <label class="form-label">Phân Loại <span class="required">*</span></label>
@@ -206,11 +206,11 @@ export class PartnersView extends BaseComponent {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
             <label class="form-label">Mã Số Thuế</label>
-            <input type="text" class="form-control" id="p-tax" value="${escapeHtml(partner ? partner.taxCode : '')}" placeholder="0108999888">
+            <input type="text" class="form-control" id="p-tax" value="${escapeHtml(partner ? partner.taxCode : '')}" placeholder="VD: 0108999888">
           </div>
           <div class="form-group">
             <label class="form-label">Số Điện Thoại</label>
-            <input type="text" class="form-control" id="p-phone" value="${escapeHtml(partner ? partner.phone : '')}" placeholder="024.7300.7300">
+            <input type="text" class="form-control" id="p-phone" value="${escapeHtml(partner ? partner.phone : '')}" placeholder="VD: 024.7300.7300">
           </div>
         </div>
 
@@ -218,7 +218,7 @@ export class PartnersView extends BaseComponent {
           <div class="form-group">
             <label class="form-label">Hạn Mức Tín Dụng (VNĐ)</label>
             <div class="input-group">
-              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="p-credit-limit" value="${formatCurrency(partner ? (partner.creditLimit || 0) : 500000000, false)}" placeholder="0">
+              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="p-credit-limit" value="${partner && partner.creditLimit ? formatCurrency(partner.creditLimit, false) : ''}" placeholder="0">
               <span class="input-group-text">VNĐ</span>
             </div>
             <div class="currency-preview-text" id="p-credit-limit-preview"></div>
@@ -231,7 +231,7 @@ export class PartnersView extends BaseComponent {
 
         <div class="form-group">
           <label class="form-label">Địa Chỉ</label>
-          <input type="text" class="form-control" id="p-address" value="${escapeHtml(partner ? partner.address : '')}" placeholder="Địa chỉ trụ sở">
+          <input type="text" class="form-control" id="p-address" value="${escapeHtml(partner ? partner.address : '')}" placeholder="VD: Số 123 Đường Nguyễn Trãi, Thanh Xuân, Hà Nội">
         </div>
       </form>
     `;

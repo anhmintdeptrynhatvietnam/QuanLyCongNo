@@ -86,15 +86,15 @@ export const AGING_BUCKETS = {
   OVERDUE_OVER_90: { id: "OVERDUE_OVER_90", label: "Quá hạn > 90 ngày (Khó đòi)", color: "#dc2626", minDays: 91, maxDays: 99999 }
 };
 
-// Cài đặt công ty & hệ thống mặc định
+// Cài đặt công ty & hệ thống mặc định (Trắng dữ liệu cho Production)
 export const DEFAULT_SETTINGS = {
-  companyName: "CÔNG TY TNHH GIẢI PHÁP SỐ TOÀN CẦU",
-  companyTaxCode: "0108999888",
-  companyAddress: "Tầng 12, Tòa nhà Keangnam Landmark 72, Nam Từ Liêm, Hà Nội",
-  companyPhone: "024.3789.9999",
-  companyEmail: "ketoan@globalsolutions.vn",
-  companyBankName: "Vietcombank - Chi nhánh Thăng Long",
-  companyBankAccount: "0011004455668",
+  companyName: "",
+  companyTaxCode: "",
+  companyAddress: "",
+  companyPhone: "",
+  companyEmail: "",
+  companyBankName: "",
+  companyBankAccount: "",
   defaultCreditTermDays: 30, // Hạn nợ mặc định: 30 ngày
   firebaseConfig: {
     apiKey: "",

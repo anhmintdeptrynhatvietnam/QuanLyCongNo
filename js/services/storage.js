@@ -35,29 +35,18 @@ export class StorageService {
   }
 
   /**
-   * Tải toàn bộ state từ Storage
+   * Tải toàn bộ state từ Storage (Khởi tạo trắng cho Production)
    */
   static loadAll() {
-    let partners = this.getItem(STORAGE_KEYS.PARTNERS, null);
-    let invoices = this.getItem(STORAGE_KEYS.INVOICES, null);
-    let payments = this.getItem(STORAGE_KEYS.PAYMENTS, null);
-    let settings = this.getItem(STORAGE_KEYS.SETTINGS, null);
-
-    // Nếu chưa từng có dữ liệu, tự động khởi tạo bộ dữ liệu mẫu ban đầu
-    if (!partners || !invoices) {
-      const initial = this.generateDemoData();
-      partners = initial.partners;
-      invoices = initial.invoices;
-      payments = initial.payments;
-      settings = initial.settings;
-
-      this.saveAll({ partners, invoices, payments, settings });
-    }
+    let partners = this.getItem(STORAGE_KEYS.PARTNERS, []);
+    let invoices = this.getItem(STORAGE_KEYS.INVOICES, []);
+    let payments = this.getItem(STORAGE_KEYS.PAYMENTS, []);
+    let settings = this.getItem(STORAGE_KEYS.SETTINGS, { ...DEFAULT_SETTINGS });
 
     return {
-      partners: partners || [],
-      invoices: invoices || [],
-      payments: payments || [],
+      partners: Array.isArray(partners) ? partners : [],
+      invoices: Array.isArray(invoices) ? invoices : [],
+      payments: Array.isArray(payments) ? payments : [],
       settings: settings || { ...DEFAULT_SETTINGS }
     };
   }

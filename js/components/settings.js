@@ -32,33 +32,33 @@ export class SettingsView extends BaseComponent {
           <form id="company-form">
             <div class="form-group">
               <label class="form-label">Tên Công Ty (Hiển thị trên Biên bản đối chiếu) <span class="required">*</span></label>
-              <input type="text" class="form-control" id="s-company-name" value="${escapeHtml(s.companyName || '')}" required>
+              <input type="text" class="form-control" id="s-company-name" value="${escapeHtml(s.companyName || '')}" placeholder="VD: Công ty Cổ phần Thương mại & Dịch vụ ABC" required>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
               <div class="form-group">
                 <label class="form-label">Mã Số Thuế</label>
-                <input type="text" class="form-control" id="s-tax-code" value="${escapeHtml(s.companyTaxCode || '')}">
+                <input type="text" class="form-control" id="s-tax-code" value="${escapeHtml(s.companyTaxCode || '')}" placeholder="VD: 0108999888">
               </div>
               <div class="form-group">
                 <label class="form-label">Số Điện Thoại</label>
-                <input type="text" class="form-control" id="s-phone" value="${escapeHtml(s.companyPhone || '')}">
+                <input type="text" class="form-control" id="s-phone" value="${escapeHtml(s.companyPhone || '')}" placeholder="VD: 024.3789.9999">
               </div>
             </div>
 
             <div class="form-group">
               <label class="form-label">Địa Chỉ Trụ Sở</label>
-              <input type="text" class="form-control" id="s-address" value="${escapeHtml(s.companyAddress || '')}">
+              <input type="text" class="form-control" id="s-address" value="${escapeHtml(s.companyAddress || '')}" placeholder="VD: Tầng 5, Tòa nhà Golden Palm, Thanh Xuân, Hà Nội">
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
               <div class="form-group">
                 <label class="form-label">Tên Ngân Hàng</label>
-                <input type="text" class="form-control" id="s-bank-name" value="${escapeHtml(s.companyBankName || '')}" placeholder="Vietcombank...">
+                <input type="text" class="form-control" id="s-bank-name" value="${escapeHtml(s.companyBankName || '')}" placeholder="VD: Vietcombank - CN Thăng Long">
               </div>
               <div class="form-group">
                 <label class="form-label">Số Tài Khoản</label>
-                <input type="text" class="form-control" id="s-bank-account" value="${escapeHtml(s.companyBankAccount || '')}">
+                <input type="text" class="form-control" id="s-bank-account" value="${escapeHtml(s.companyBankAccount || '')}" placeholder="VD: 0011004455668">
               </div>
             </div>
 

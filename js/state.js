@@ -6,6 +6,7 @@
 
 import { StorageService } from './services/storage.js';
 import { recalculatePartnerBalances, calculateInvoiceStatus } from './services/debt-engine.js';
+import { DEFAULT_SETTINGS } from './config.js';
 
 class StateStore {
   constructor() {
@@ -238,6 +239,7 @@ class StateStore {
     this.state.partners = [];
     this.state.invoices = [];
     this.state.payments = [];
+    this.state.settings = { ...DEFAULT_SETTINGS };
     this.recomputeAndPersist();
   }
 }
