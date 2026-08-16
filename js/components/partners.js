@@ -262,6 +262,7 @@ export class PartnersView extends BaseComponent {
       title,
       bodyHtml,
       footerHtml,
+      size: "xl",
       onOpen: (body, footer) => {
         const downloadBtn = qs("#btn-download-partner-template", body);
         const dropzone = qs("#excel-dropzone", body);

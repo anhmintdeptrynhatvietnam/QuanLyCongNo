@@ -7,13 +7,18 @@ import { qs, refreshLucideIcons } from '../utils/dom.js';
 import { initCurrencyInputs } from '../utils/formatters.js';
 
 export class Modal {
-  static open({ title, bodyHtml, footerHtml, onOpen }) {
+  static open({ title, bodyHtml, footerHtml, size = "md", onOpen }) {
     const backdrop = qs("#app-modal");
+    const dialogEl = qs(".modal-dialog", backdrop);
     const titleEl = qs("#modal-title");
     const bodyEl = qs("#modal-body");
     const footerEl = qs("#modal-footer");
 
     if (!backdrop) return;
+
+    if (dialogEl) {
+      dialogEl.className = "modal-dialog" + (size ? ` modal-${size}` : " modal-md");
+    }
 
     titleEl.textContent = title || "";
     bodyEl.innerHTML = bodyHtml || "";
