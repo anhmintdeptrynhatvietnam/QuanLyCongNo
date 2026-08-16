@@ -7,7 +7,7 @@ import { BaseComponent } from './base-component.js';
 import { stateStore } from '../state.js';
 import { Modal } from './modal.js';
 import { Toast } from './toast.js';
-import { formatCurrency, formatDate } from '../utils/formatters.js';
+import { formatCurrency, formatDate, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
 import { PARTNER_TYPES, PARTNER_TYPE_LABELS } from '../config.js';
 import { qs, qsa, escapeHtml } from '../utils/dom.js';
 
@@ -217,7 +217,11 @@ export class PartnersView extends BaseComponent {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
             <label class="form-label">Hạn Mức Tín Dụng (VNĐ)</label>
-            <input type="number" class="form-control" id="p-credit-limit" value="${partner ? partner.creditLimit || 0 : 500000000}" step="10000000">
+            <div class="input-group">
+              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="p-credit-limit" value="${formatCurrency(partner ? (partner.creditLimit || 0) : 500000000, false)}" placeholder="0">
+              <span class="input-group-text">VNĐ</span>
+            </div>
+            <div class="currency-preview-text" id="p-credit-limit-preview"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Số Ngày Được Nợ (Ngày)</label>
@@ -256,7 +260,7 @@ export class PartnersView extends BaseComponent {
             taxCode: qs("#p-tax", body).value.trim(),
             phone: qs("#p-phone", body).value.trim(),
             address: qs("#p-address", body).value.trim(),
-            creditLimit: Number(qs("#p-credit-limit", body).value) || 0,
+            creditLimit: parseCurrency(qs("#p-credit-limit", body).value),
             creditTermDays: Number(qs("#p-term-days", body).value) || 30
           };
 

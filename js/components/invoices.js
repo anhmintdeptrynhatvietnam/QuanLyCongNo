@@ -8,7 +8,7 @@ import { stateStore } from '../state.js';
 import { Modal } from './modal.js';
 import { Toast } from './toast.js';
 import { ExportService } from '../services/export-service.js';
-import { formatCurrency, formatDate, renderInvoiceStatusBadge, toInputDateFormat } from '../utils/formatters.js';
+import { formatCurrency, formatDate, renderInvoiceStatusBadge, toInputDateFormat, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
 import { INVOICE_TYPES, INVOICE_STATUS, PAYMENT_METHODS } from '../config.js';
 import { qs, qsa, escapeHtml } from '../utils/dom.js';
 
@@ -284,7 +284,11 @@ export class InvoicesView extends BaseComponent {
 
         <div class="form-group">
           <label class="form-label">Tổng Tiền Hóa Đơn (VNĐ) <span class="required">*</span></label>
-          <input type="number" class="form-control font-mono" id="inv-total-amount" value="${invoice ? invoice.totalAmount : 50000000}" step="1000000" required>
+          <div class="input-group">
+            <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-total-amount" value="${formatCurrency(invoice ? invoice.totalAmount : 50000000, false)}" placeholder="0" required>
+            <span class="input-group-text">VNĐ</span>
+          </div>
+          <div class="currency-preview-text" id="inv-total-amount-preview"></div>
         </div>
 
         <div class="form-group">
@@ -323,7 +327,7 @@ export class InvoicesView extends BaseComponent {
             partnerName: selectedPartner ? selectedPartner.name : "",
             issueDate: qs("#inv-issue-date", body).value,
             dueDate: qs("#inv-due-date", body).value,
-            totalAmount: Number(qs("#inv-total-amount", body).value) || 0,
+            totalAmount: parseCurrency(qs("#inv-total-amount", body).value),
             notes: qs("#inv-notes", body).value.trim()
           };
 
@@ -359,7 +363,11 @@ export class InvoicesView extends BaseComponent {
       <form id="quick-pay-form">
         <div class="form-group">
           <label class="form-label">Số Tiền Thanh Toán (VNĐ) <span class="required">*</span></label>
-          <input type="number" class="form-control" id="qp-amount" value="${remaining}" max="${remaining}" step="500000" required>
+          <div class="input-group">
+            <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="qp-amount" value="${formatCurrency(remaining, false)}" placeholder="0" required>
+            <span class="input-group-text">VNĐ</span>
+          </div>
+          <div class="currency-preview-text" id="qp-amount-preview"></div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
@@ -394,7 +402,7 @@ export class InvoicesView extends BaseComponent {
       footerHtml,
       onOpen: (body, footer) => {
         qs("#btn-confirm-quick-pay", footer).onclick = () => {
-          const amount = Number(qs("#qp-amount", body).value) || 0;
+          const amount = parseCurrency(qs("#qp-amount", body).value);
           if (amount <= 0 || amount > remaining) {
             Toast.warning(`Số tiền thanh toán phải từ 1 đến ${formatCurrency(remaining)}!`);
             return;

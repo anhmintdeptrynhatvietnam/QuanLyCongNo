@@ -4,6 +4,7 @@
  */
 
 import { qs, refreshLucideIcons } from '../utils/dom.js';
+import { initCurrencyInputs } from '../utils/formatters.js';
 
 export class Modal {
   static open({ title, bodyHtml, footerHtml, onOpen }) {
@@ -22,6 +23,7 @@ export class Modal {
 
     backdrop.classList.add("open");
     refreshLucideIcons();
+    initCurrencyInputs(bodyEl);
 
     // Event listeners
     const closeBtn = qs("#modal-btn-close");

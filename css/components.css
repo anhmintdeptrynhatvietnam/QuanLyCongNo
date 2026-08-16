@@ -286,6 +286,53 @@ textarea.form-control {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
+/* Input Group with Addons */
+.input-group {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  width: 100%;
+}
+
+.input-group .form-control {
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-group-text {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-main);
+  border-left: 0;
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  letter-spacing: 0.05em;
+  user-select: none;
+}
+
+.currency-preview-text {
+  font-size: 0.775rem;
+  min-height: 1.25rem;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.currency-input {
+  font-family: var(--font-mono, "JetBrains Mono", monospace) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  color: var(--primary-600) !important;
+}
+
 /* Modal Window */
 .modal-backdrop {
   position: fixed;

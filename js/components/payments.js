@@ -7,7 +7,7 @@ import { BaseComponent } from './base-component.js';
 import { stateStore } from '../state.js';
 import { Modal } from './modal.js';
 import { Toast } from './toast.js';
-import { formatCurrency, formatDate, toInputDateFormat } from '../utils/formatters.js';
+import { formatCurrency, formatDate, toInputDateFormat, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
 import { PAYMENT_TYPES, PAYMENT_TYPE_LABELS, PAYMENT_METHODS, PAYMENT_METHOD_LABELS, INVOICE_TYPES } from '../config.js';
 import { autoAllocatePaymentFIFO } from '../services/debt-engine.js';
 import { qs, qsa, escapeHtml } from '../utils/dom.js';
@@ -212,7 +212,11 @@ export class PaymentsView extends BaseComponent {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
             <label class="form-label">Số Tiền Thanh Toán (VNĐ) <span class="required">*</span></label>
-            <input type="number" class="form-control" id="pay-amount" value="50000000" step="1000000" required>
+            <div class="input-group">
+              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="pay-amount" value="${formatCurrency(50000000, false)}" placeholder="0" required>
+              <span class="input-group-text">VNĐ</span>
+            </div>
+            <div class="currency-preview-text" id="pay-amount-preview"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Phương Thức Thanh Toán</label>
@@ -253,7 +257,7 @@ export class PaymentsView extends BaseComponent {
         qs("#btn-save-payment", footer).onclick = () => {
           const partnerId = qs("#pay-partner", body).value;
           const selectedPartner = partners.find(p => p.id === partnerId);
-          const amount = Number(qs("#pay-amount", body).value) || 0;
+          const amount = parseCurrency(qs("#pay-amount", body).value);
 
           if (amount <= 0) {
             Toast.warning("Số tiền thanh toán phải lớn hơn 0!");

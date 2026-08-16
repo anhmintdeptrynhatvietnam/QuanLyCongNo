@@ -4,6 +4,7 @@
  */
 
 import { refreshLucideIcons } from '../utils/dom.js';
+import { initCurrencyInputs } from '../utils/formatters.js';
 
 export class BaseComponent {
   constructor(containerId) {
@@ -20,6 +21,7 @@ export class BaseComponent {
     this.container.innerHTML = this.render(state);
     this.afterRender(state);
     refreshLucideIcons();
+    initCurrencyInputs(this.container);
   }
 
   /**
