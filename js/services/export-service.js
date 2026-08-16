@@ -155,9 +155,24 @@ export class ExportService {
             return;
           }
 
-          const normalizeKey = (k) => String(k).trim().toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-z0-9]/g, "");
+          const removeVietnameseTones = (str) => {
+            str = String(str || "");
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+            str = str.replace(/đ|Đ/g, "d");
+            str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "a");
+            str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "e");
+            str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "i");
+            str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "o");
+            str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "u");
+            str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "y");
+            str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+          };
 
           const partners = [];
           let validCount = 0;
@@ -175,15 +190,43 @@ export class ExportService {
             let rawTerm = 30;
 
             for (const [colName, colVal] of Object.entries(row)) {
-              const cleanKey = normalizeKey(colName);
+              const cleanKey = removeVietnameseTones(colName);
               const strVal = String(colVal).trim();
 
-              if (cleanKey.includes("tendoitac") || cleanKey.includes("tenkhachhang") || cleanKey.includes("tenncc") || cleanKey === "ten" || cleanKey === "name") {
+              // Tên đối tác (bắt buộc)
+              if (
+                cleanKey.includes("tendoitac") ||
+                cleanKey.includes("tenkhachhang") ||
+                cleanKey.includes("tenncc") ||
+                cleanKey.includes("tendoituong") ||
+                cleanKey === "ten" ||
+                cleanKey === "name" ||
+                cleanKey.includes("fullname") ||
+                cleanKey.includes("hoten") ||
+                (cleanKey.includes("doitac") && !cleanKey.includes("ma") && !cleanKey.includes("loai"))
+              ) {
                 rawName = strVal;
-              } else if (cleanKey.includes("madoitac") || cleanKey.includes("makh") || cleanKey.includes("mancc") || cleanKey === "ma" || cleanKey === "code") {
+              }
+              // Mã đối tác
+              else if (
+                cleanKey.includes("madoitac") ||
+                cleanKey.includes("makh") ||
+                cleanKey.includes("mancc") ||
+                cleanKey.includes("madoituong") ||
+                cleanKey === "ma" ||
+                cleanKey === "code" ||
+                cleanKey === "id"
+              ) {
                 rawCode = strVal;
-              } else if (cleanKey.includes("phanloai") || cleanKey.includes("loai") || cleanKey === "type") {
-                const typeStr = normalizeKey(strVal);
+              }
+              // Phân loại
+              else if (
+                cleanKey.includes("phanloai") ||
+                cleanKey.includes("loai") ||
+                cleanKey.includes("type") ||
+                cleanKey.includes("nhom")
+              ) {
+                const typeStr = removeVietnameseTones(strVal);
                 if (typeStr.includes("ncc") || typeStr.includes("nhacungcap") || typeStr.includes("vendor") || typeStr.includes("supplier") || typeStr.includes("phaitra")) {
                   rawType = "VENDOR";
                 } else if (typeStr.includes("2chieu") || typeStr.includes("both") || typeStr.includes("cahai") || typeStr.includes("doitac2chieu")) {
@@ -191,16 +234,54 @@ export class ExportService {
                 } else {
                   rawType = "CUSTOMER";
                 }
-              } else if (cleanKey.includes("masothue") || cleanKey.includes("mst") || cleanKey.includes("tax")) {
+              }
+              // Mã số thuế
+              else if (
+                cleanKey.includes("masothue") ||
+                cleanKey.includes("mst") ||
+                cleanKey.includes("tax") ||
+                cleanKey.includes("taxcode")
+              ) {
                 rawTax = strVal;
-              } else if (cleanKey.includes("sodienthoai") || cleanKey.includes("sdt") || cleanKey.includes("dienthoai") || cleanKey.includes("phone")) {
+              }
+              // Số điện thoại
+              else if (
+                cleanKey.includes("sodienthoai") ||
+                cleanKey.includes("sdt") ||
+                cleanKey.includes("dienthoai") ||
+                cleanKey.includes("phone") ||
+                cleanKey.includes("tel") ||
+                cleanKey.includes("mobile")
+              ) {
                 rawPhone = strVal;
-              } else if (cleanKey.includes("diachi") || cleanKey.includes("address")) {
+              }
+              // Địa chỉ
+              else if (
+                cleanKey.includes("diachi") ||
+                cleanKey.includes("address") ||
+                cleanKey === "dc"
+              ) {
                 rawAddress = strVal;
-              } else if (cleanKey.includes("hanmuc") || cleanKey.includes("creditlimit") || cleanKey.includes("limit")) {
+              }
+              // Hạn mức tín dụng / nợ
+              else if (
+                cleanKey.includes("hanmuc") ||
+                cleanKey.includes("creditlimit") ||
+                cleanKey.includes("limit") ||
+                cleanKey.includes("tienno") ||
+                cleanKey.includes("duno")
+              ) {
                 const numStr = String(colVal).replace(/[^\d]/g, "");
                 rawLimit = parseInt(numStr, 10) || 0;
-              } else if (cleanKey.includes("songay") || cleanKey.includes("hanno") || cleanKey.includes("term") || cleanKey.includes("days")) {
+              }
+              // Hạn nợ ngày
+              else if (
+                cleanKey.includes("songay") ||
+                cleanKey.includes("hanno") ||
+                cleanKey.includes("term") ||
+                cleanKey.includes("days") ||
+                cleanKey.includes("thoihan")
+              ) {
                 const termNum = parseInt(String(colVal).replace(/[^\d]/g, ""), 10);
                 rawTerm = isNaN(termNum) || termNum <= 0 ? 30 : termNum;
               }

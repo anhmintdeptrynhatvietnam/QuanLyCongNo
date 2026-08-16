@@ -234,11 +234,13 @@ export class PartnersView extends BaseComponent {
         </div>
 
         <!-- Khung Kéo Thả File (Dropzone) -->
+        <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
         <div class="excel-dropzone" id="excel-dropzone">
-          <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
-          <i data-lucide="file-up" class="excel-dropzone-icon"></i>
-          <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
-          <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv (Tối đa 5.000 dòng)</div>
+          <div id="dropzone-content">
+            <i data-lucide="file-up" class="excel-dropzone-icon"></i>
+            <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
+            <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv (Tối đa 5.000 dòng)</div>
+          </div>
         </div>
 
         <!-- Khu vực Xem Trước Dữ Liệu (Preview Area) -->
@@ -263,6 +265,7 @@ export class PartnersView extends BaseComponent {
       onOpen: (body, footer) => {
         const downloadBtn = qs("#btn-download-partner-template", body);
         const dropzone = qs("#excel-dropzone", body);
+        const dropzoneContent = qs("#dropzone-content", body);
         const fileInput = qs("#excel-file-input", body);
         const previewArea = qs("#excel-preview-area", body);
         const confirmBtn = qs("#btn-confirm-import-partners", footer);
@@ -300,14 +303,17 @@ export class PartnersView extends BaseComponent {
           fileInput.onchange = (e) => {
             if (e.target.files.length > 0) {
               handleFile(e.target.files[0]);
+              fileInput.value = ""; // Reset to allow selecting same file again if edited
             }
           };
         }
 
         const handleFile = async (file) => {
           try {
-            dropzone.innerHTML = `<div style="font-size: 0.9rem; font-weight: 600; color: var(--primary-600);"><i data-lucide="loader-2"></i> Đang đọc file "${escapeHtml(file.name)}"...</div>`;
-            refreshLucideIcons();
+            if (dropzoneContent) {
+              dropzoneContent.innerHTML = `<div style="font-size: 0.9rem; font-weight: 600; color: var(--primary-600);"><i data-lucide="loader-2"></i> Đang đọc file "${escapeHtml(file.name)}"...</div>`;
+              refreshLucideIcons();
+            }
 
             parsedResult = await ExportService.parsePartnersFromExcel(file);
             const { partners, summary } = parsedResult;
@@ -378,12 +384,14 @@ export class PartnersView extends BaseComponent {
             `;
 
             // Reset dropzone state
-            dropzone.innerHTML = `
-              <i data-lucide="file-check" class="excel-dropzone-icon" style="color: var(--success-600);"></i>
-              <div class="excel-dropzone-title">Đã chọn: <b>${escapeHtml(file.name)}</b></div>
-              <div class="excel-dropzone-sub">Bấm vào đây để chọn lại file khác</div>
-            `;
-            refreshLucideIcons();
+            if (dropzoneContent) {
+              dropzoneContent.innerHTML = `
+                <i data-lucide="file-check" class="excel-dropzone-icon" style="color: var(--success-600);"></i>
+                <div class="excel-dropzone-title">Đã chọn: <b>${escapeHtml(file.name)}</b></div>
+                <div class="excel-dropzone-sub">Bấm vào đây để chọn lại file khác</div>
+              `;
+              refreshLucideIcons();
+            }
 
             // Enable confirm button if valid rows exist
             if (summary.valid > 0) {
@@ -395,12 +403,14 @@ export class PartnersView extends BaseComponent {
             }
           } catch (err) {
             Toast.error(err.message);
-            dropzone.innerHTML = `
-              <i data-lucide="file-up" class="excel-dropzone-icon"></i>
-              <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
-              <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv</div>
-            `;
-            refreshLucideIcons();
+            if (dropzoneContent) {
+              dropzoneContent.innerHTML = `
+                <i data-lucide="file-up" class="excel-dropzone-icon"></i>
+                <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
+                <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv</div>
+              `;
+              refreshLucideIcons();
+            }
           }
         };
 
