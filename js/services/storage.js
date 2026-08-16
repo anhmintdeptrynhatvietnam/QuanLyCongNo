@@ -147,6 +147,7 @@ export class StorageService {
       {
         id: "INV-2026-001",
         invoiceNumber: "HD-002345",
+        itemName: "Phần mềm quản trị chuỗi cung ứng ERP (Đợt 1)",
         partnerId: "KH001",
         partnerName: "Công ty Cổ phần Sữa Việt Nam (Vinamilk)",
         type: INVOICE_TYPES.RECEIVABLE,
@@ -154,11 +155,12 @@ export class StorageService {
         dueDate: subDays(15), // Quá hạn 15 ngày (Nhóm 1-30)
         totalAmount: 150000000,
         paidAmount: 50000000,
-        notes: "Gói giải pháp phần mềm quản trị chuỗi cung ứng đợt 1"
+        notes: "Nghiệm thu triển khai giai đoạn 1"
       },
       {
         id: "INV-2026-002",
         invoiceNumber: "HD-002346",
+        itemName: "Gói bảo trì & hỗ trợ kỹ thuật quý 1/2026",
         partnerId: "KH001",
         partnerName: "Công ty Cổ phần Sữa Việt Nam (Vinamilk)",
         type: INVOICE_TYPES.RECEIVABLE,
@@ -166,11 +168,12 @@ export class StorageService {
         dueDate: addDays(20), // Trong hạn
         totalAmount: 85000000,
         paidAmount: 0,
-        notes: "Bảo trì và hỗ trợ kỹ thuật quý 1/2026"
+        notes: "Hợp đồng dịch vụ bảo trì định kỳ"
       },
       {
         id: "INV-2026-003",
         invoiceNumber: "HD-002347",
+        itemName: "Bản quyền kiến trúc phần mềm Enterprise",
         partnerId: "KH002",
         partnerName: "Công ty Cổ phần FPT Software",
         type: INVOICE_TYPES.RECEIVABLE,
@@ -178,11 +181,12 @@ export class StorageService {
         dueDate: subDays(55), // Quá hạn 55 ngày (Nhóm 31-60)
         totalAmount: 120000000,
         paidAmount: 0,
-        notes: "Cung cấp bản quyền bản vẽ kiến trúc phần mềm"
+        notes: "Gia hạn license hàng năm"
       },
       {
         id: "INV-2026-004",
         invoiceNumber: "HD-002348",
+        itemName: "Dự án chuyển đổi số viễn thông",
         partnerId: "KH003",
         partnerName: "Tập đoàn Công nghiệp - Viễn thông Quân đội (Viettel)",
         type: INVOICE_TYPES.RECEIVABLE,
@@ -195,6 +199,7 @@ export class StorageService {
       {
         id: "INV-2026-005",
         invoiceNumber: "HD-NCC-881",
+        itemName: "Thuê hạ tầng Cloud Server 6 tháng đầu năm",
         partnerId: "NCC001",
         partnerName: "Tổng Công ty Công nghệ & Giải pháp CMC",
         type: INVOICE_TYPES.PAYABLE,
@@ -202,11 +207,12 @@ export class StorageService {
         dueDate: addDays(10), // Trong hạn
         totalAmount: 95000000,
         paidAmount: 0,
-        notes: "Thuê hạ tầng Cloud Server 6 tháng đầu năm"
+        notes: "Gói máy chủ Cloud Dedicated"
       },
       {
         id: "INV-2026-006",
         invoiceNumber: "HD-NCC-882",
+        itemName: "5 Máy trạm Workstation Dell Precision 3660",
         partnerId: "NCC002",
         partnerName: "Công ty TNHH Phân Phối Dell Technologies VN",
         type: INVOICE_TYPES.PAYABLE,
@@ -214,7 +220,7 @@ export class StorageService {
         dueDate: subDays(10), // Quá hạn 10 ngày
         totalAmount: 160000000,
         paidAmount: 60000000,
-        notes: "Mua 5 máy trạm Workstation Dell Precision"
+        notes: "Trang bị cho phòng R&D"
       }
     ];
 

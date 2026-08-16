@@ -125,7 +125,8 @@ export class DashboardView extends BaseComponent {
                     <tr>
                       <td>
                         <div style="font-weight: 600;">${escapeHtml(inv.partnerName)}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(inv.invoiceNumber)}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-main); font-weight: 500;">${escapeHtml(inv.itemName || inv.title || '')}</div>
+                        <div class="font-mono" style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(inv.invoiceNumber)}</div>
                       </td>
                       <td class="text-right font-mono font-bold text-danger">
                         ${formatCurrency(inv.remainingAmount)}

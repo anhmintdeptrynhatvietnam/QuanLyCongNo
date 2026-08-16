@@ -202,6 +202,7 @@ export class ReportsView extends BaseComponent {
           <thead>
             <tr>
               <th>Số Hóa Đơn</th>
+              <th>Hàng Hóa / Dịch Vụ</th>
               <th>Ngày Lập</th>
               <th>Hạn Nợ</th>
               <th class="text-right">Số Tiền (VNĐ)</th>
@@ -211,10 +212,11 @@ export class ReportsView extends BaseComponent {
           </thead>
           <tbody>
             ${invoices.length === 0 ? `
-              <tr><td colspan="6" class="text-center">Không phát sinh hóa đơn nào.</td></tr>
+              <tr><td colspan="7" class="text-center">Không phát sinh hóa đơn nào.</td></tr>
             ` : invoices.map(i => `
               <tr>
                 <td class="font-mono font-bold">${escapeHtml(i.invoiceNumber)}</td>
+                <td style="font-weight: 500;">${escapeHtml(i.itemName || i.title || i.notes || '-')}</td>
                 <td>${formatDate(i.issueDate)}</td>
                 <td>${formatDate(i.dueDate)}</td>
                 <td class="text-right font-mono">${formatCurrency(i.totalAmount)}</td>

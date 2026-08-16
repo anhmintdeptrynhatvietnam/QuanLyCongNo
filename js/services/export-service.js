@@ -20,6 +20,7 @@ export class ExportService {
     const rows = invoices.map((inv, idx) => ({
       "STT": idx + 1,
       "Số Hóa Đơn": inv.invoiceNumber,
+      "Hàng Hóa / Dịch Vụ": inv.itemName || inv.title || "",
       "Đối Tác": inv.partnerName,
       "Loại": inv.type === "RECEIVABLE" ? "Phải Thu" : "Phải Trả",
       "Ngày Phát Sinh": formatDate(inv.issueDate),

@@ -115,7 +115,10 @@ export class InvoicesView extends BaseComponent {
                   <tr>
                     <td>
                       <div class="font-mono font-bold" style="color: var(--primary-600);">${escapeHtml(inv.invoiceNumber)}</div>
-                      <div style="font-size: 0.7rem; color: var(--text-muted);">${inv.type === INVOICE_TYPES.RECEIVABLE ? 'Bán ra' : 'Mua vào'}</div>
+                      <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem; margin-top: 2px;">
+                        ${escapeHtml(inv.itemName || inv.title || "Hàng hóa / Dịch vụ")}
+                      </div>
+                      <div style="font-size: 0.7rem; color: var(--text-muted);">${inv.type === INVOICE_TYPES.RECEIVABLE ? 'Bán ra (Phải thu)' : 'Mua vào (Phải trả)'}</div>
                     </td>
                     <td>
                       <div style="font-weight: 600;">${escapeHtml(inv.partnerName)}</div>
@@ -248,8 +251,13 @@ export class InvoicesView extends BaseComponent {
           </div>
           <div class="form-group">
             <label class="form-label">Số Hóa Đơn / Mã Chứng Từ <span class="required">*</span></label>
-            <input type="text" class="form-control" id="inv-number" required value="${escapeHtml(invoice ? invoice.invoiceNumber : `HD-${Date.now().toString().slice(-6)}`)}">
+            <input type="text" class="form-control font-mono" id="inv-number" required value="${escapeHtml(invoice ? invoice.invoiceNumber : `HD-${Date.now().toString().slice(-6)}`)}">
           </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Hàng Hóa / Dịch Vụ / Mục Đích Hóa Đơn <span class="required">*</span></label>
+          <input type="text" class="form-control" id="inv-item-name" required value="${escapeHtml(invoice ? (invoice.itemName || invoice.title || '') : '')}" placeholder="VD: Cung cấp bản quyền phần mềm ERP, Xuất 50 máy tính Dell, Bảo trì Q1...">
         </div>
 
         <div class="form-group">
@@ -276,12 +284,12 @@ export class InvoicesView extends BaseComponent {
 
         <div class="form-group">
           <label class="form-label">Tổng Tiền Hóa Đơn (VNĐ) <span class="required">*</span></label>
-          <input type="number" class="form-control" id="inv-total-amount" value="${invoice ? invoice.totalAmount : 50000000}" step="1000000" required>
+          <input type="number" class="form-control font-mono" id="inv-total-amount" value="${invoice ? invoice.totalAmount : 50000000}" step="1000000" required>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Diễn Giải / Nội Dung Hóa Đơn</label>
-          <textarea class="form-control" id="inv-notes" placeholder="Mô tả hàng hóa, hợp đồng, điều khoản...">${escapeHtml(invoice ? invoice.notes : '')}</textarea>
+          <label class="form-label">Diễn Giải / Ghi Chú Thêm</label>
+          <textarea class="form-control" id="inv-notes" placeholder="Chi tiết hợp đồng, điều khoản giao hàng, ghi chú nội bộ...">${escapeHtml(invoice ? invoice.notes : '')}</textarea>
         </div>
       </form>
     `;
@@ -299,9 +307,17 @@ export class InvoicesView extends BaseComponent {
         qs("#btn-save-invoice", footer).onclick = () => {
           const partnerId = qs("#inv-partner", body).value;
           const selectedPartner = partners.find(p => p.id === partnerId);
+          const itemName = qs("#inv-item-name", body).value.trim();
+
+          if (!itemName) {
+            Toast.warning("Vui lòng nhập tên hàng hóa / dịch vụ hoặc mục đích hóa đơn!");
+            return;
+          }
 
           const invoiceData = {
             invoiceNumber: qs("#inv-number", body).value.trim(),
+            itemName,
+            title: itemName,
             type: qs("#inv-type", body).value,
             partnerId,
             partnerName: selectedPartner ? selectedPartner.name : "",
