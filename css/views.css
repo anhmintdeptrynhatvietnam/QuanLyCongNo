@@ -1,0 +1,199 @@
+/* ==========================================================================
+   VIEW-SPECIFIC STYLES (Dashboard, Aging Matrix, Partner Ledger, Charts)
+   ========================================================================== */
+
+/* Dashboard KPI Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.kpi-receivable::before { background: var(--success-500); }
+.kpi-payable::before { background: var(--warning-500); }
+.kpi-overdue::before { background: var(--danger-500); }
+.kpi-forecast::before { background: var(--primary-500); }
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.kpi-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kpi-receivable .kpi-icon-wrap { background: var(--success-50); color: var(--success-600); }
+.kpi-payable .kpi-icon-wrap { background: var(--warning-50); color: var(--warning-600); }
+.kpi-overdue .kpi-icon-wrap { background: var(--danger-50); color: var(--danger-600); }
+.kpi-forecast .kpi-icon-wrap { background: var(--primary-50); color: var(--primary-600); }
+
+[data-theme="dark"] .kpi-receivable .kpi-icon-wrap { background: rgba(34, 197, 94, 0.15); }
+[data-theme="dark"] .kpi-payable .kpi-icon-wrap { background: rgba(245, 158, 11, 0.15); }
+[data-theme="dark"] .kpi-overdue .kpi-icon-wrap { background: rgba(244, 63, 94, 0.15); }
+[data-theme="dark"] .kpi-forecast .kpi-icon-wrap { background: rgba(59, 130, 246, 0.15); }
+
+.kpi-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.kpi-footer {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Dashboard Charts Grid */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 1100px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 280px;
+  width: 100%;
+}
+
+/* Aging Analysis Matrix Table */
+.aging-table td.aging-current { color: var(--aging-current); font-weight: 600; }
+.aging-table td.aging-1-30 { color: var(--aging-1-30); font-weight: 600; }
+.aging-table td.aging-31-60 { color: var(--aging-31-60); font-weight: 600; }
+.aging-table td.aging-61-90 { color: var(--aging-61-90); font-weight: 600; }
+.aging-table td.aging-over-90 { color: var(--aging-over-90); font-weight: 700; }
+
+/* Partner Credit Limit Progress Bar */
+.credit-progress-wrap {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.credit-progress-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.credit-safe { background: var(--success-500); }
+.credit-warning { background: var(--warning-500); }
+.credit-danger { background: var(--danger-500); }
+
+/* Quick Action Bar */
+.action-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Statement / Reconciliation Preview (Printable View) */
+.statement-sheet {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--space-6);
+}
+
+.statement-company-info {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.statement-signatures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  text-align: center;
+  margin-top: var(--space-10);
+  padding-top: var(--space-6);
+}
+
+.signature-box {
+  display: flex;
+  flex-direction: column;
+  gap: 80px;
+}

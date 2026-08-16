@@ -1,0 +1,49 @@
+/**
+ * MODAL COMPONENT - QUẢN LÝ CÔNG NỢ
+ * Quản lý mở/đóng modal, render tiêu đề, body và các action buttons.
+ */
+
+import { qs, refreshLucideIcons } from '../utils/dom.js';
+
+export class Modal {
+  static open({ title, bodyHtml, footerHtml, onOpen }) {
+    const backdrop = qs("#app-modal");
+    const titleEl = qs("#modal-title");
+    const bodyEl = qs("#modal-body");
+    const footerEl = qs("#modal-footer");
+
+    if (!backdrop) return;
+
+    titleEl.textContent = title || "";
+    bodyEl.innerHTML = bodyHtml || "";
+    footerEl.innerHTML = footerHtml || `
+      <button class="btn btn-secondary" id="btn-modal-cancel">Đóng</button>
+    `;
+
+    backdrop.classList.add("open");
+    refreshLucideIcons();
+
+    // Event listeners
+    const closeBtn = qs("#modal-btn-close");
+    const cancelBtn = qs("#btn-modal-cancel");
+
+    if (closeBtn) closeBtn.onclick = () => this.close();
+    if (cancelBtn) cancelBtn.onclick = () => this.close();
+
+    // Close on backdrop click (click outside dialog)
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) this.close();
+    };
+
+    if (typeof onOpen === "function") {
+      onOpen(bodyEl, footerEl);
+    }
+  }
+
+  static close() {
+    const backdrop = qs("#app-modal");
+    if (backdrop) {
+      backdrop.classList.remove("open");
+    }
+  }
+}

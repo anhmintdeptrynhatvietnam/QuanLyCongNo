@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ Thống Quản Lý Công Nợ Doanh Nghiệp | Debt Management</title>
+  <meta name="description" content="Ứng dụng quản lý công nợ chuyên nghiệp cho Kế toán & Ban Quản trị doanh nghiệp. Theo dõi tuổi nợ, dòng tiền, khớp nợ tự động và đối chiếu công nợ.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <!-- External Libraries (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Application Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/views.css">
+</head>
+<body>
+  <div id="app-root">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">CN</div>
+        <div class="brand-info">
+          <span class="brand-title">Quản Lý Công Nợ</span>
+          <span class="brand-subtitle">Phiên bản Kế toán v1.0</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <div class="nav-section-label">Tổng Quan</div>
+        <a href="#dashboard" class="nav-item active" data-view="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+
+        <div class="nav-section-label">Nghiệp Vụ Kế Toán</div>
+        <a href="#partners" class="nav-item" data-view="partners">
+          <i data-lucide="users"></i>
+          <span>Khách hàng & NCC</span>
+        </a>
+        <a href="#invoices" class="nav-item" data-view="invoices">
+          <i data-lucide="file-text"></i>
+          <span>Hóa đơn / Nợ phát sinh</span>
+          <span class="nav-badge hidden" id="badge-overdue-count">0</span>
+        </a>
+        <a href="#payments" class="nav-item" data-view="payments">
+          <i data-lucide="receipt"></i>
+          <span>Phiếu Thu / Chi</span>
+        </a>
+        <a href="#reports" class="nav-item" data-view="reports">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Báo Cáo & Đối Chiếu</span>
+        </a>
+
+        <div class="nav-section-label">Hệ Thống</div>
+        <a href="#settings" class="nav-item" data-view="settings">
+          <i data-lucide="settings"></i>
+          <span>Cài Đặt & Dữ Liệu</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sync-status" id="sync-indicator">
+          <span class="sync-dot"></span>
+          <span id="sync-text">Lưu trữ: LocalStorage</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="btn btn-icon" id="btn-toggle-sidebar" title="Mở/Đóng Menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <h1 class="page-title" id="page-title">Dashboard Tổng Quan</h1>
+        </div>
+
+        <div class="header-right">
+          <div class="header-search">
+            <i data-lucide="search"></i>
+            <input type="text" id="global-search-input" placeholder="Tìm kiếm nhanh (Ctrl+K)...">
+          </div>
+
+          <button class="btn btn-icon" id="btn-theme-toggle" title="Chuyển chế độ Sáng/Tối">
+            <i data-lucide="moon" id="theme-icon"></i>
+          </button>
+
+          <button class="btn btn-primary btn-sm" id="btn-quick-create" title="Tạo giao dịch nhanh">
+            <i data-lucide="plus"></i>
+            <span>Tạo Mới</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Content Dynamic View Container -->
+      <main class="main-content" id="main-content">
+        <!-- Rendered dynamically by Router & Components -->
+      </main>
+    </div>
+  </div>
+
+  <!-- Reusable Modal Window -->
+  <div class="modal-backdrop" id="app-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Tiêu Đề Modal</h3>
+        <button class="btn btn-icon btn-sm" id="modal-btn-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Modal content injected here -->
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <!-- Modal action buttons injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Main ES Module Entry Point -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
