@@ -9,7 +9,8 @@ import { Modal } from './modal.js';
 import { Toast } from './toast.js';
 import { formatCurrency, formatDate, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
 import { PARTNER_TYPES, PARTNER_TYPE_LABELS } from '../config.js';
-import { qs, qsa, escapeHtml } from '../utils/dom.js';
+import { ExportService } from '../services/export-service.js';
+import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
 
 export class PartnersView extends BaseComponent {
   constructor(containerId) {
@@ -48,10 +49,16 @@ export class PartnersView extends BaseComponent {
           </button>
         </div>
 
-        <button class="btn btn-primary" id="btn-add-partner">
-          <i data-lucide="user-plus"></i>
-          <span>Thêm Đối Tác</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-secondary" id="btn-import-partners-excel" title="Nhập danh bạ đối tác hàng loạt từ file Excel">
+            <i data-lucide="file-spreadsheet"></i>
+            <span>Nhập Từ Excel</span>
+          </button>
+          <button class="btn btn-primary" id="btn-add-partner">
+            <i data-lucide="user-plus"></i>
+            <span>Thêm Đối Tác</span>
+          </button>
+        </div>
       </div>
 
       <!-- Partners Table -->
@@ -152,6 +159,12 @@ export class PartnersView extends BaseComponent {
       addBtn.onclick = () => this.showPartnerModal();
     }
 
+    // Import Excel click
+    const importExcelBtn = qs("#btn-import-partners-excel", this.container);
+    if (importExcelBtn) {
+      importExcelBtn.onclick = () => this.showImportExcelModal();
+    }
+
     // Edit partner click
     qsa(".btn-edit-partner", this.container).forEach(btn => {
       btn.onclick = () => {
@@ -174,6 +187,239 @@ export class PartnersView extends BaseComponent {
           }
         }
       };
+    });
+  }
+
+  showImportExcelModal() {
+    let parsedResult = null;
+
+    const title = "Nhập Danh Sách Khách Hàng & Nhà Cung Cấp Từ Excel";
+    const bodyHtml = `
+      <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <!-- Phần 1: Khung Hướng Dẫn Các Bước -->
+        <div class="excel-guide-container">
+          <div class="excel-guide-step">
+            <div class="step-badge">1</div>
+            <div class="step-content">
+              <div class="step-title">Tải File Mẫu</div>
+              <div class="step-desc">Tải file Excel mẫu (.xlsx) định dạng sẵn các cột thông tin chuẩn kế toán.</div>
+            </div>
+          </div>
+          <div class="excel-guide-step">
+            <div class="step-badge">2</div>
+            <div class="step-content">
+              <div class="step-title">Điền Dữ Liệu</div>
+              <div class="step-desc">Nhập danh sách đối tác vào file (Bắt buộc: <b>Tên đối tác</b> và <b>Phân loại</b>).</div>
+            </div>
+          </div>
+          <div class="excel-guide-step">
+            <div class="step-badge">3</div>
+            <div class="step-content">
+              <div class="step-title">Tải Lên & Xem Trước</div>
+              <div class="step-desc">Kéo thả file vào khung bên dưới, kiểm tra bảng xem trước rồi xác nhận nhập.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nút Tải Mẫu -->
+        <div class="flex items-center justify-between" style="background: var(--bg-surface-subtle); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-main);">
+          <div>
+            <div style="font-weight: 600; font-size: 0.875rem;">Chưa có file mẫu chuẩn?</div>
+            <div style="font-size: 0.775rem; color: var(--text-muted);">File mẫu chứa sẵn cấu trúc cột và 3 dòng ví dụ thực tế.</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-download-partner-template">
+            <i data-lucide="download"></i>
+            <span>Tải File Excel Mẫu (.xlsx)</span>
+          </button>
+        </div>
+
+        <!-- Khung Kéo Thả File (Dropzone) -->
+        <div class="excel-dropzone" id="excel-dropzone">
+          <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+          <i data-lucide="file-up" class="excel-dropzone-icon"></i>
+          <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
+          <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv (Tối đa 5.000 dòng)</div>
+        </div>
+
+        <!-- Khu vực Xem Trước Dữ Liệu (Preview Area) -->
+        <div id="excel-preview-area" style="display: none;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-modal-cancel">Hủy</button>
+      <button class="btn btn-primary" id="btn-confirm-import-partners" disabled>
+        <i data-lucide="check"></i>
+        <span>Xác Nhận Nhập Đối Tác</span>
+      </button>
+    `;
+
+    Modal.open({
+      title,
+      bodyHtml,
+      footerHtml,
+      onOpen: (body, footer) => {
+        const downloadBtn = qs("#btn-download-partner-template", body);
+        const dropzone = qs("#excel-dropzone", body);
+        const fileInput = qs("#excel-file-input", body);
+        const previewArea = qs("#excel-preview-area", body);
+        const confirmBtn = qs("#btn-confirm-import-partners", footer);
+
+        // Download template click
+        if (downloadBtn) {
+          downloadBtn.onclick = () => {
+            ExportService.generatePartnerImportTemplate();
+            Toast.info("Đang tải file Excel mẫu...");
+          };
+        }
+
+        // Dropzone click & drag drop
+        if (dropzone && fileInput) {
+          dropzone.onclick = () => fileInput.click();
+
+          dropzone.ondragover = (e) => {
+            e.preventDefault();
+            dropzone.classList.add("dragover");
+          };
+
+          dropzone.ondragleave = () => {
+            dropzone.classList.remove("dragover");
+          };
+
+          dropzone.ondrop = (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("dragover");
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+              handleFile(files[0]);
+            }
+          };
+
+          fileInput.onchange = (e) => {
+            if (e.target.files.length > 0) {
+              handleFile(e.target.files[0]);
+            }
+          };
+        }
+
+        const handleFile = async (file) => {
+          try {
+            dropzone.innerHTML = `<div style="font-size: 0.9rem; font-weight: 600; color: var(--primary-600);"><i data-lucide="loader-2"></i> Đang đọc file "${escapeHtml(file.name)}"...</div>`;
+            refreshLucideIcons();
+
+            parsedResult = await ExportService.parsePartnersFromExcel(file);
+            const { partners, summary } = parsedResult;
+
+            if (summary.valid === 0) {
+              Toast.warning("Không tìm thấy dòng dữ liệu đối tác hợp lệ nào trong file!");
+            } else {
+              Toast.success(`Đã đọc ${summary.total} dòng (${summary.valid} hợp lệ)!`);
+            }
+
+            // Render preview table
+            previewArea.style.display = "block";
+            previewArea.innerHTML = `
+              <div class="excel-preview-box">
+                <div class="excel-preview-header">
+                  <div style="font-weight: 600; font-size: 0.85rem;">
+                    Bảng xem trước dữ liệu (${summary.valid}/${summary.total} dòng hợp lệ)
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    File: <b>${escapeHtml(file.name)}</b>
+                  </div>
+                </div>
+                <div class="excel-preview-table-wrapper">
+                  <table class="data-table" style="font-size: 0.8rem;">
+                    <thead>
+                      <tr>
+                        <th style="width: 50px;">Dòng</th>
+                        <th>Tên Đối Tác</th>
+                        <th>Phân Loại</th>
+                        <th>MST / SĐT</th>
+                        <th class="text-right">Hạn Mức Nợ</th>
+                        <th>Hạn Nợ</th>
+                        <th>Trạng Thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${partners.map(p => `
+                        <tr style="${p.isValid ? '' : 'background: rgba(239, 68, 68, 0.05);'}">
+                          <td>${p.rowIndex}</td>
+                          <td>
+                            <div style="font-weight: 600;">${escapeHtml(p.name || "(Trống)")}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">${escapeHtml(p.code)}</div>
+                          </td>
+                          <td>
+                            <span class="badge ${p.type === 'CUSTOMER' ? 'badge-customer' : (p.type === 'VENDOR' ? 'badge-vendor' : 'badge-both')}" style="font-size: 0.7rem;">
+                              ${PARTNER_TYPE_LABELS[p.type] || p.type}
+                            </span>
+                          </td>
+                          <td>
+                            <div>${escapeHtml(p.taxCode || "-")}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">${escapeHtml(p.phone || "-")}</div>
+                          </td>
+                          <td class="text-right font-mono">${p.creditLimit > 0 ? formatCurrency(p.creditLimit) : "0 VNĐ"}</td>
+                          <td>${p.creditTermDays} ngày</td>
+                          <td>
+                            ${p.isValid ? `
+                              <span class="validation-tag-ok"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Hợp lệ</span>
+                            ` : `
+                              <span class="validation-tag-err" title="${escapeHtml(p.error)}"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> ${escapeHtml(p.error)}</span>
+                            `}
+                          </td>
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+
+            // Reset dropzone state
+            dropzone.innerHTML = `
+              <i data-lucide="file-check" class="excel-dropzone-icon" style="color: var(--success-600);"></i>
+              <div class="excel-dropzone-title">Đã chọn: <b>${escapeHtml(file.name)}</b></div>
+              <div class="excel-dropzone-sub">Bấm vào đây để chọn lại file khác</div>
+            `;
+            refreshLucideIcons();
+
+            // Enable confirm button if valid rows exist
+            if (summary.valid > 0) {
+              confirmBtn.disabled = false;
+              confirmBtn.innerHTML = `<i data-lucide="upload"></i><span>Nhập ${summary.valid} Đối Tác Vào Hệ Thống</span>`;
+              refreshLucideIcons();
+            } else {
+              confirmBtn.disabled = true;
+            }
+          } catch (err) {
+            Toast.error(err.message);
+            dropzone.innerHTML = `
+              <i data-lucide="file-up" class="excel-dropzone-icon"></i>
+              <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
+              <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv</div>
+            `;
+            refreshLucideIcons();
+          }
+        };
+
+        // Confirm import click
+        if (confirmBtn) {
+          confirmBtn.onclick = () => {
+            if (!parsedResult || !parsedResult.partners) return;
+            const validPartners = parsedResult.partners.filter(p => p.isValid);
+            if (validPartners.length === 0) {
+              Toast.warning("Không có đối tác hợp lệ nào để nhập!");
+              return;
+            }
+
+            stateStore.addPartnersBatch(validPartners);
+            Toast.success(`Đã nhập thành công ${validPartners.length} đối tác vào hệ thống!`);
+            Modal.close();
+          };
+        }
+      }
     });
   }
 

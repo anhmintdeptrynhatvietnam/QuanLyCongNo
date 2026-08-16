@@ -191,6 +191,35 @@ class StateStore {
     return newPartner;
   }
 
+  /**
+   * Thêm hàng loạt đối tác (Batch Import từ Excel)
+   * @param {Array<Object>} partnersList
+   * @returns {Array<Object>}
+   */
+  addPartnersBatch(partnersList = []) {
+    const now = new Date().toISOString();
+    const addedList = [];
+
+    partnersList.forEach((p, idx) => {
+      const id = p.id || `P-${Date.now().toString(36).toUpperCase()}-${idx + 1}`;
+      const partnerObj = {
+        ...p,
+        id,
+        code: p.code || id,
+        creditLimit: Number(p.creditLimit) || 0,
+        creditTermDays: Number(p.creditTermDays) || 30,
+        totalReceivable: 0,
+        totalPayable: 0,
+        createdAt: now
+      };
+      this.state.partners.push(partnerObj);
+      addedList.push(partnerObj);
+    });
+
+    this.recomputeAndPersist();
+    return addedList;
+  }
+
   updatePartner(id, updatedFields) {
     const index = this.state.partners.findIndex(p => p.id === id);
     if (index !== -1) {
