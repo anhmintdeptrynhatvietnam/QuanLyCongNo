@@ -13,7 +13,29 @@ export const STORAGE_KEYS = {
   PAYMENTS: "qlcn_payments_v1",
   SETTINGS: "qlcn_settings_v1",
   AUDIT_LOGS: "qlcn_audit_logs_v1",
-  THEME: "qlcn_theme_mode"
+  THEME: "qlcn_theme_mode",
+  CURRENT_USER: "qlcn_current_user_v1"
+};
+
+/**
+ * Tạo key lưu trữ phân tách theo từng tài khoản người dùng
+ * @param {string} key 
+ * @param {string|null} userId 
+ * @returns {string}
+ */
+export function getUserStorageKey(key, userId = null) {
+  return userId ? `${key}_u_${userId}` : key;
+}
+
+// CẤU HÌNH DỰ ÁN FIREBASE (Lưu sẵn trong mã nguồn hệ thống)
+// Điền thông tin dự án Firebase của bạn tại đây để dùng Đăng nhập Google & Firestore Cloud Realtime
+export const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
 };
 
 // Loại đối tượng công nợ

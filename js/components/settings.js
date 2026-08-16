@@ -6,6 +6,7 @@
 import { BaseComponent } from './base-component.js';
 import { stateStore } from '../state.js';
 import { StorageService } from '../services/storage.js';
+import { FirebaseService } from '../services/firebase.js';
 import { Toast } from './toast.js';
 import { qs, escapeHtml } from '../utils/dom.js';
 
@@ -74,43 +75,74 @@ export class SettingsView extends BaseComponent {
           </form>
         </div>
 
-        <!-- Cột 2: Cấu hình Firebase & Dữ liệu -->
+        <!-- Cột 2: Tài Khoản Google & Đồng Bộ Đám Mây -->
         <div style="display: flex; flex-direction: column; gap: var(--space-6);">
-          <!-- Cấu hình Firebase -->
+          <!-- Thẻ Đăng nhập Google & Cloud Sync -->
           <div class="card">
             <div class="card-header">
               <div class="card-title">
                 <i data-lucide="cloud" style="color: var(--primary-600);"></i>
-                <span>Đồng Bộ Cloud Firestore (Firebase)</span>
+                <span>Tài Khoản & Đồng Bộ Đám Mây</span>
               </div>
             </div>
 
-            <p style="font-size: 0.8rem; margin-bottom: var(--space-3);">
-              Tùy chọn kết nối Firebase để đồng bộ số liệu tức thời giữa nhiều máy kế toán. Nếu để trống, hệ thống hoạt động hoàn toàn offline trên trình duyệt.
-            </p>
-
-            <form id="firebase-form">
-              <div class="form-group">
-                <label class="form-label">API Key</label>
-                <input type="text" class="form-control" id="fb-api-key" value="${escapeHtml(fb.apiKey || '')}" placeholder="AIzaSy...">
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
-                <div class="form-group">
-                  <label class="form-label">Project ID</label>
-                  <input type="text" class="form-control" id="fb-project-id" value="${escapeHtml(fb.projectId || '')}" placeholder="my-debt-app">
+            ${state.currentUser ? `
+              <!-- Đã đăng nhập Google -->
+              <div class="user-profile-box">
+                <div class="user-profile-header">
+                  ${state.currentUser.photoURL ? `
+                    <img class="user-avatar" src="${escapeHtml(state.currentUser.photoURL)}" alt="Avatar" referrerpolicy="no-referrer">
+                  ` : `
+                    <div class="user-avatar user-avatar-fallback">
+                      ${escapeHtml(state.currentUser.displayName.charAt(0).toUpperCase())}
+                    </div>
+                  `}
+                  <div class="user-info">
+                    <div class="user-name">${escapeHtml(state.currentUser.displayName)}</div>
+                    <div class="user-email">${escapeHtml(state.currentUser.email)}</div>
+                    <div class="user-badge-wrap">
+                      <span class="badge badge-paid" style="font-size: 0.72rem;">
+                        <span class="badge-dot"></span>
+                        Đã kết nối Cloud Firestore
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label class="form-label">App ID</label>
-                  <input type="text" class="form-control" id="fb-app-id" value="${escapeHtml(fb.appId || '')}" placeholder="1:123456:web:abcd">
+
+                <div class="user-actions-row">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-now">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Đồng Bộ Ngay</span>
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm" id="btn-google-signout">
+                    <i data-lucide="log-out"></i>
+                    <span>Đăng Xuất / Đổi Tài Khoản</span>
+                  </button>
                 </div>
               </div>
+            ` : `
+              <!-- Chưa đăng nhập Google -->
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-4);">
+                Đăng nhập tài khoản Google để tự động đồng bộ dữ liệu đa thiết bị, sao lưu đám mây thời gian thực và hỗ trợ phân quyền đa tài khoản.
+              </p>
 
-              <button type="button" class="btn btn-secondary" id="btn-save-firebase">
-                <i data-lucide="check"></i>
-                <span>Lưu Cấu Hình Firebase</span>
-              </button>
-            </form>
+              <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                <button type="button" class="btn btn-google" id="btn-google-login">
+                  <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                  </svg>
+                  <span>Đăng Nhập Với Google</span>
+                </button>
+
+                <div style="font-size: 0.775rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="shield-check" style="width: 14px; height: 14px; color: var(--success-600);"></i>
+                  <span>Dữ liệu từng tài khoản được lưu riêng biệt và mã hóa an toàn.</span>
+                </div>
+              </div>
+            `}
           </div>
 
           <!-- Quản trị CSDL & Dữ liệu mẫu Demo -->
@@ -182,18 +214,63 @@ export class SettingsView extends BaseComponent {
       };
     }
 
-    // Save Firebase Config
-    const saveFbBtn = qs("#btn-save-firebase", this.container);
-    if (saveFbBtn) {
-      saveFbBtn.onclick = () => {
-        stateStore.updateSettings({
-          firebaseConfig: {
-            apiKey: qs("#fb-api-key", this.container).value.trim(),
-            projectId: qs("#fb-project-id", this.container).value.trim(),
-            appId: qs("#fb-app-id", this.container).value.trim()
+    // Google Sign-In button
+    const googleLoginBtn = qs("#btn-google-login", this.container);
+    if (googleLoginBtn) {
+      googleLoginBtn.onclick = async () => {
+        try {
+          googleLoginBtn.disabled = true;
+          googleLoginBtn.innerHTML = `<span>Đang kết nối Google...</span>`;
+          await FirebaseService.signInWithGoogle();
+          Toast.success("Đăng nhập tài khoản Google thành công!");
+        } catch (err) {
+          googleLoginBtn.disabled = false;
+          googleLoginBtn.innerHTML = `
+            <svg class="google-icon" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+            </svg>
+            <span>Đăng Nhập Với Google</span>
+          `;
+          if (err.message === "CONFIG_MISSING") {
+            Toast.warning("Vui lòng điền FIREBASE_CONFIG trong file js/config.js để kích hoạt tính năng Đăng nhập Google & Firestore!");
+          } else {
+            Toast.error(err.message || "Đăng nhập Google thất bại!");
           }
-        });
-        Toast.success("Đã lưu cấu hình Firebase!");
+        }
+      };
+    }
+
+    // Google Sign-Out button
+    const googleSignoutBtn = qs("#btn-google-signout", this.container);
+    if (googleSignoutBtn) {
+      googleSignoutBtn.onclick = async () => {
+        if (confirm("Bạn có chắc muốn đăng xuất tài khoản Google này?")) {
+          await FirebaseService.signOut();
+          Toast.info("Đã đăng xuất tài khoản Google.");
+        }
+      };
+    }
+
+    // Sync Now button
+    const syncNowBtn = qs("#btn-sync-now", this.container);
+    if (syncNowBtn) {
+      syncNowBtn.onclick = async () => {
+        if (state.currentUser?.uid) {
+          try {
+            syncNowBtn.disabled = true;
+            syncNowBtn.innerHTML = `<span>Đang đồng bộ...</span>`;
+            await FirebaseService.saveUserData(state.currentUser.uid, stateStore.state);
+            Toast.success("Đã đồng bộ toàn bộ dữ liệu lên Cloud Firestore thành công!");
+          } catch (e) {
+            Toast.error("Lỗi đồng bộ: " + e.message);
+          } finally {
+            syncNowBtn.disabled = false;
+            syncNowBtn.innerHTML = `<i data-lucide="refresh-cw"></i><span>Đồng Bộ Ngay</span>`;
+          }
+        }
       };
     }
 

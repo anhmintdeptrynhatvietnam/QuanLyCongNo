@@ -3,7 +3,7 @@
  * Quản lý lưu trữ LocalStorage, xuất/nhập JSON backup, và nạp dữ liệu mẫu kế toán.
  */
 
-import { STORAGE_KEYS, DEFAULT_SETTINGS, PARTNER_TYPES, INVOICE_TYPES, PAYMENT_METHODS } from '../config.js';
+import { STORAGE_KEYS, DEFAULT_SETTINGS, PARTNER_TYPES, INVOICE_TYPES, PAYMENT_METHODS, getUserStorageKey } from '../config.js';
 import { calculateInvoiceStatus } from './debt-engine.js';
 import { toInputDateFormat } from '../utils/formatters.js';
 
@@ -35,13 +35,19 @@ export class StorageService {
   }
 
   /**
-   * Tải toàn bộ state từ Storage (Khởi tạo trắng cho Production)
+   * Tải toàn bộ state từ Storage theo từng người dùng (User-scoped)
+   * @param {string|null} userId
    */
-  static loadAll() {
-    let partners = this.getItem(STORAGE_KEYS.PARTNERS, []);
-    let invoices = this.getItem(STORAGE_KEYS.INVOICES, []);
-    let payments = this.getItem(STORAGE_KEYS.PAYMENTS, []);
-    let settings = this.getItem(STORAGE_KEYS.SETTINGS, { ...DEFAULT_SETTINGS });
+  static loadAll(userId = null) {
+    const kPartners = getUserStorageKey(STORAGE_KEYS.PARTNERS, userId);
+    const kInvoices = getUserStorageKey(STORAGE_KEYS.INVOICES, userId);
+    const kPayments = getUserStorageKey(STORAGE_KEYS.PAYMENTS, userId);
+    const kSettings = getUserStorageKey(STORAGE_KEYS.SETTINGS, userId);
+
+    let partners = this.getItem(kPartners, []);
+    let invoices = this.getItem(kInvoices, []);
+    let payments = this.getItem(kPayments, []);
+    let settings = this.getItem(kSettings, { ...DEFAULT_SETTINGS });
 
     return {
       partners: Array.isArray(partners) ? partners : [],
@@ -52,13 +58,20 @@ export class StorageService {
   }
 
   /**
-   * Lưu toàn bộ state vào Storage
+   * Lưu toàn bộ state vào Storage theo từng người dùng (User-scoped)
+   * @param {Object} data
+   * @param {string|null} userId
    */
-  static saveAll({ partners, invoices, payments, settings }) {
-    if (partners) this.setItem(STORAGE_KEYS.PARTNERS, partners);
-    if (invoices) this.setItem(STORAGE_KEYS.INVOICES, invoices);
-    if (payments) this.setItem(STORAGE_KEYS.PAYMENTS, payments);
-    if (settings) this.setItem(STORAGE_KEYS.SETTINGS, settings);
+  static saveAll({ partners, invoices, payments, settings }, userId = null) {
+    const kPartners = getUserStorageKey(STORAGE_KEYS.PARTNERS, userId);
+    const kInvoices = getUserStorageKey(STORAGE_KEYS.INVOICES, userId);
+    const kPayments = getUserStorageKey(STORAGE_KEYS.PAYMENTS, userId);
+    const kSettings = getUserStorageKey(STORAGE_KEYS.SETTINGS, userId);
+
+    if (partners !== undefined) this.setItem(kPartners, partners);
+    if (invoices !== undefined) this.setItem(kInvoices, invoices);
+    if (payments !== undefined) this.setItem(kPayments, payments);
+    if (settings !== undefined) this.setItem(kSettings, settings);
   }
 
   /**

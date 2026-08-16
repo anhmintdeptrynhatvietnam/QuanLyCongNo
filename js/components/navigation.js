@@ -37,9 +37,13 @@ export class Navigation {
     // Theme Toggle
     this.initTheme();
 
-    // Cập nhật badges
+    // Cập nhật badges & user status
     this.updateBadges(stateStore.state);
-    stateStore.subscribe((state) => this.updateBadges(state));
+    this.updateUserAndSyncStatus(stateStore.state);
+    stateStore.subscribe((state) => {
+      this.updateBadges(state);
+      this.updateUserAndSyncStatus(state);
+    });
 
     // Handle initial route
     this.handleHashChange();
@@ -76,6 +80,50 @@ export class Navigation {
 
     if (typeof this.onRouteChange === "function") {
       this.onRouteChange(activeView);
+    }
+  }
+
+  static updateUserAndSyncStatus(state) {
+    // 1. Cập nhật User Pill trên Top Header
+    const userContainer = qs("#header-user-container");
+    if (userContainer) {
+      if (state.currentUser) {
+        const u = state.currentUser;
+        userContainer.innerHTML = `
+          <a href="#settings" class="header-user-pill" title="Tài khoản: ${u.email} (Bấm để xem Cài đặt)">
+            ${u.photoURL ? `
+              <img class="header-user-avatar" src="${u.photoURL}" alt="Avatar" referrerpolicy="no-referrer">
+            ` : `
+              <div class="header-user-avatar-fallback">${u.displayName.charAt(0).toUpperCase()}</div>
+            `}
+            <span style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${u.displayName}</span>
+          </a>
+        `;
+      } else {
+        userContainer.innerHTML = `
+          <a href="#settings" class="btn btn-secondary btn-sm" style="height: 32px; font-size: 0.775rem;">
+            <i data-lucide="log-in" style="width: 14px; height: 14px;"></i>
+            <span>Đăng Nhập</span>
+          </a>
+        `;
+      }
+    }
+
+    // 2. Cập nhật Sidebar Footer Sync Text
+    const syncText = qs("#sync-text");
+    const syncDot = qs(".sync-dot");
+    if (syncText) {
+      if (state.currentUser) {
+        syncText.textContent = state.syncStatus === "syncing" ? "Đang đồng bộ Cloud..." : `Cloud: ${state.currentUser.email.split('@')[0]}`;
+        if (syncDot) {
+          syncDot.style.backgroundColor = state.syncStatus === "error" ? "var(--danger-500)" : "var(--success-500)";
+        }
+      } else {
+        syncText.textContent = "Chế độ: Offline LocalStorage";
+        if (syncDot) {
+          syncDot.style.backgroundColor = "var(--text-muted)";
+        }
+      }
     }
   }
 

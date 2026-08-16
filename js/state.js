@@ -7,6 +7,7 @@
 import { StorageService } from './services/storage.js';
 import { recalculatePartnerBalances, calculateInvoiceStatus } from './services/debt-engine.js';
 import { DEFAULT_SETTINGS } from './config.js';
+import { FirebaseService } from './services/firebase.js';
 
 class StateStore {
   constructor() {
@@ -15,23 +16,99 @@ class StateStore {
       partners: [],
       invoices: [],
       payments: [],
-      settings: {},
+      settings: { ...DEFAULT_SETTINGS },
       activeView: "dashboard",
-      searchQuery: ""
+      searchQuery: "",
+      currentUser: null, // { uid, displayName, email, photoURL, isLoggedIn }
+      syncStatus: "offline" // "offline" | "syncing" | "synced" | "error"
     };
   }
 
   /**
-   * Khởi tạo State từ Storage
+   * Khởi tạo State từ Storage và lắng nghe Firebase Auth
    */
-  init() {
-    const loaded = StorageService.loadAll();
+  async init() {
+    const loaded = StorageService.loadAll(null);
     this.state.partners = loaded.partners || [];
     this.state.invoices = loaded.invoices || [];
     this.state.payments = loaded.payments || [];
-    this.state.settings = loaded.settings || {};
+    this.state.settings = loaded.settings || { ...DEFAULT_SETTINGS };
 
     this.recomputeAndPersist(false);
+
+    // Khởi tạo Firebase SDK
+    if (FirebaseService.isConfigured()) {
+      await FirebaseService.init();
+      FirebaseService.onAuthStateChanged((user) => {
+        this.handleAuthStateChange(user);
+      });
+    }
+  }
+
+  /**
+   * Xử lý chuyển đổi tài khoản người dùng (Đăng nhập / Đổi tài khoản / Đăng xuất)
+   */
+  async handleAuthStateChange(user) {
+    if (user) {
+      this.state.currentUser = user;
+      this.state.syncStatus = "syncing";
+      this.notify();
+
+      const userId = user.uid;
+      // 1. Tải cache cục bộ của user trước để hiển thị tức thì
+      const localData = StorageService.loadAll(userId);
+      this.state.partners = localData.partners || [];
+      this.state.invoices = localData.invoices || [];
+      this.state.payments = localData.payments || [];
+      this.state.settings = localData.settings || { ...DEFAULT_SETTINGS };
+
+      // 2. Kéo dữ liệu từ Cloud Firestore
+      const cloudData = await FirebaseService.fetchUserData(userId);
+      if (cloudData) {
+        this.state.partners = cloudData.partners || [];
+        this.state.invoices = (cloudData.invoices || []).map(inv => ({
+          ...inv,
+          status: calculateInvoiceStatus(inv)
+        }));
+        this.state.payments = cloudData.payments || [];
+        this.state.settings = cloudData.settings || { ...DEFAULT_SETTINGS };
+      } else if (this.state.partners.length > 0 || this.state.invoices.length > 0) {
+        // Nếu trên Cloud chưa có dữ liệu mà máy có dữ liệu thì đẩy lên Cloud
+        await FirebaseService.saveUserData(userId, this.state);
+      }
+
+      // 3. Lắng nghe Realtime sync từ Cloud
+      FirebaseService.listenUserData(userId, (remoteData) => {
+        if (remoteData) {
+          this.state.partners = remoteData.partners || [];
+          this.state.invoices = (remoteData.invoices || []).map(inv => ({
+            ...inv,
+            status: calculateInvoiceStatus(inv)
+          }));
+          this.state.payments = remoteData.payments || [];
+          this.state.settings = remoteData.settings || { ...DEFAULT_SETTINGS };
+          this.state.partners = recalculatePartnerBalances(this.state.partners, this.state.invoices);
+          this.state.syncStatus = "synced";
+          StorageService.saveAll(this.state, userId);
+          this.notify();
+        }
+      });
+
+      this.state.syncStatus = "synced";
+      this.recomputeAndPersist(true);
+    } else {
+      // Đăng xuất -> Chuyển về chế độ Khách (Offline Guest)
+      this.state.currentUser = null;
+      this.state.syncStatus = "offline";
+
+      const guestData = StorageService.loadAll(null);
+      this.state.partners = guestData.partners || [];
+      this.state.invoices = guestData.invoices || [];
+      this.state.payments = guestData.payments || [];
+      this.state.settings = guestData.settings || { ...DEFAULT_SETTINGS };
+
+      this.recomputeAndPersist(true);
+    }
   }
 
   /**
@@ -58,7 +135,7 @@ class StateStore {
   }
 
   /**
-   * Tự động tính toán lại số dư đối tác và lưu trữ
+   * Tự động tính toán lại số dư đối tác và lưu trữ xuống Local & Cloud
    * @param {boolean} shouldNotify
    */
   recomputeAndPersist(shouldNotify = true) {
@@ -71,13 +148,27 @@ class StateStore {
     // 2. Tính lại số dư 2 chiều cho từng khách hàng & NCC
     this.state.partners = recalculatePartnerBalances(this.state.partners, this.state.invoices);
 
-    // 3. Ghi dữ liệu xuống Storage
+    const userId = this.state.currentUser?.uid || null;
+
+    // 3. Ghi dữ liệu xuống LocalStorage
     StorageService.saveAll({
       partners: this.state.partners,
       invoices: this.state.invoices,
       payments: this.state.payments,
       settings: this.state.settings
-    });
+    }, userId);
+
+    // 4. Đồng bộ lên Cloud Firestore nếu đang đăng nhập
+    if (userId && FirebaseService.isInitialized) {
+      FirebaseService.saveUserData(userId, this.state)
+        .then(() => {
+          this.state.syncStatus = "synced";
+        })
+        .catch(err => {
+          console.error("[StateStore] Lỗi đồng bộ Cloud Firestore:", err);
+          this.state.syncStatus = "error";
+        });
+    }
 
     if (shouldNotify) {
       this.notify();
