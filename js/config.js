@@ -30,12 +30,12 @@ export function getUserStorageKey(key, userId = null) {
 // CẤU HÌNH DỰ ÁN FIREBASE (Lưu sẵn trong mã nguồn hệ thống)
 // Điền thông tin dự án Firebase của bạn tại đây để dùng Đăng nhập Google & Firestore Cloud Realtime
 export const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyCQdG0S0PaK10r8yf-Lcr5xr3x7Uw2ZSNk",
+  authDomain: "quanlytaichinhdoanhnghiep.firebaseapp.com",
+  projectId: "quanlytaichinhdoanhnghiep",
+  storageBucket: "quanlytaichinhdoanhnghiep.firebasestorage.app",
+  messagingSenderId: "532074307137",
+  appId: "1:532074307137:web:81d62875c3a78eaaef70c0"
 };
 
 // Loại đối tượng công nợ
