@@ -126,11 +126,12 @@ export class ExportService {
   }
 
   /**
-   * Đọc và chuẩn hóa danh sách đối tác từ file Excel
+   * Đọc và chuẩn hóa danh sách đối tác từ file Excel kèm kiểm tra trùng lặp
    * @param {File} file
+   * @param {Array} existingPartners Danh sách đối tác hiện có trong hệ thống để so khớp trùng
    * @returns {Promise<{ partners: Array, summary: Object }>}
    */
-  static parsePartnersFromExcel(file) {
+  static parsePartnersFromExcel(file, existingPartners = []) {
     return new Promise((resolve, reject) => {
       if (!window.XLSX) {
         reject(new Error("Thư viện SheetJS chưa được nạp."));
@@ -175,7 +176,13 @@ export class ExportService {
           };
 
           const partners = [];
+          const seenInFileCodes = new Set();
+          const seenInFileNames = new Set();
+          const seenInFileTaxes = new Set();
+
           let validCount = 0;
+          let dupCount = 0;
+          let newCount = 0;
           let invalidCount = 0;
 
           rawRows.forEach((row, idx) => {
@@ -288,7 +295,64 @@ export class ExportService {
             }
 
             const isValid = rawName.length > 0;
-            if (isValid) validCount++; else invalidCount++;
+            let isDuplicate = false;
+            let duplicateReason = "";
+            let matchedExistingPartner = null;
+
+            if (isValid) {
+              const cleanCode = rawCode.trim().toLowerCase();
+              const cleanTax = rawTax.replace(/[^\d]/g, "");
+              const cleanName = removeVietnameseTones(rawName);
+
+              // 1. Kiểm tra trùng với đối tác ĐÃ CÓ trong hệ thống
+              if (cleanCode) {
+                matchedExistingPartner = existingPartners.find(p => p.code && p.code.trim().toLowerCase() === cleanCode);
+                if (matchedExistingPartner) {
+                  isDuplicate = true;
+                  duplicateReason = `Trùng mã "${rawCode}" với đối tác "${matchedExistingPartner.name}" trên hệ thống`;
+                }
+              }
+
+              if (!isDuplicate && cleanTax) {
+                matchedExistingPartner = existingPartners.find(p => p.taxCode && p.taxCode.replace(/[^\d]/g, "") === cleanTax);
+                if (matchedExistingPartner) {
+                  isDuplicate = true;
+                  duplicateReason = `Trùng MST "${rawTax}" với đối tác "${matchedExistingPartner.name}" trên hệ thống`;
+                }
+              }
+
+              if (!isDuplicate && cleanName) {
+                matchedExistingPartner = existingPartners.find(p => removeVietnameseTones(p.name) === cleanName);
+                if (matchedExistingPartner) {
+                  isDuplicate = true;
+                  duplicateReason = `Trùng tên "${matchedExistingPartner.name}" đã có trên hệ thống`;
+                }
+              }
+
+              // 2. Kiểm tra trùng với các dòng trước đó trong chính file Excel này
+              if (!isDuplicate) {
+                if (cleanCode && seenInFileCodes.has(cleanCode)) {
+                  isDuplicate = true;
+                  duplicateReason = `Trùng mã "${rawCode}" với dòng trước trong file Excel`;
+                } else if (cleanTax && seenInFileTaxes.has(cleanTax)) {
+                  isDuplicate = true;
+                  duplicateReason = `Trùng MST "${rawTax}" với dòng trước trong file Excel`;
+                } else if (cleanName && seenInFileNames.has(cleanName)) {
+                  isDuplicate = true;
+                  duplicateReason = `Trùng tên "${rawName}" với dòng trước trong file Excel`;
+                }
+              }
+
+              // Ghi nhận đã thấy trong file
+              if (cleanCode) seenInFileCodes.add(cleanCode);
+              if (cleanTax) seenInFileTaxes.add(cleanTax);
+              if (cleanName) seenInFileNames.add(cleanName);
+
+              validCount++;
+              if (isDuplicate) dupCount++; else newCount++;
+            } else {
+              invalidCount++;
+            }
 
             partners.push({
               rowIndex: idx + 2, // Excel row number (1-based header is row 1)
@@ -301,6 +365,9 @@ export class ExportService {
               creditLimit: rawLimit,
               creditTermDays: rawTerm,
               isValid,
+              isDuplicate,
+              duplicateReason,
+              matchedExistingPartner,
               error: isValid ? "" : "Thiếu tên đối tác (bắt buộc)"
             });
           });
@@ -310,6 +377,8 @@ export class ExportService {
             summary: {
               total: rawRows.length,
               valid: validCount,
+              newCount,
+              dupCount,
               invalid: invalidCount
             }
           });

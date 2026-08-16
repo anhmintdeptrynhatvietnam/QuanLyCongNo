@@ -315,22 +315,60 @@ export class PartnersView extends BaseComponent {
               refreshLucideIcons();
             }
 
-            parsedResult = await ExportService.parsePartnersFromExcel(file);
+            parsedResult = await ExportService.parsePartnersFromExcel(file, stateStore.state.partners);
             const { partners, summary } = parsedResult;
 
             if (summary.valid === 0) {
               Toast.warning("Không tìm thấy dòng dữ liệu đối tác hợp lệ nào trong file!");
+            } else if (summary.dupCount > 0) {
+              Toast.info(`Đã đọc ${summary.total} dòng: phát hiện ${summary.dupCount} đối tác bị trùng lặp.`);
             } else {
-              Toast.success(`Đã đọc ${summary.total} dòng (${summary.valid} hợp lệ)!`);
+              Toast.success(`Đã đọc ${summary.total} dòng (${summary.valid} hợp lệ, không có dòng trùng)!`);
             }
 
             // Render preview table
             previewArea.style.display = "block";
             previewArea.innerHTML = `
+              <!-- Thanh Thống Kê -->
+              <div class="stat-summary-bar">
+                <span class="stat-pill stat-pill-total">Tổng: <b>${summary.total}</b> dòng</span>
+                <span class="stat-pill stat-pill-new"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Mới: <b>${summary.newCount}</b></span>
+                ${summary.dupCount > 0 ? `
+                  <span class="stat-pill stat-pill-dup"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Trùng: <b>${summary.dupCount}</b></span>
+                ` : ''}
+                ${summary.invalid > 0 ? `
+                  <span class="stat-pill stat-pill-err"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Lỗi: <b>${summary.invalid}</b></span>
+                ` : ''}
+              </div>
+
+              <!-- Tùy Chọn Xử Lý Trùng Lặp (nếu phát hiện có trùng) -->
+              ${summary.dupCount > 0 ? `
+                <div class="duplicate-options-box">
+                  <div style="font-weight: 600; font-size: 0.85rem; color: #b45309; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                    <span>Phát hiện ${summary.dupCount} đối tác bị trùng lặp. Vui lòng chọn phương án:</span>
+                  </div>
+                  <div class="duplicate-radio-row">
+                    <label class="duplicate-radio-label">
+                      <input type="radio" name="dup-mode" value="SKIP" checked>
+                      <span>Bỏ qua dòng trùng (Chỉ thêm <b>${summary.newCount}</b> đối tác mới)</span>
+                    </label>
+                    <label class="duplicate-radio-label">
+                      <input type="radio" name="dup-mode" value="UPDATE">
+                      <span>Cập nhật đè thông tin đối tác đã có</span>
+                    </label>
+                    <label class="duplicate-radio-label">
+                      <input type="radio" name="dup-mode" value="ALLOW">
+                      <span>Vẫn thêm mới tất cả (${summary.valid} dòng)</span>
+                    </label>
+                  </div>
+                </div>
+              ` : ''}
+
               <div class="excel-preview-box">
                 <div class="excel-preview-header">
                   <div style="font-weight: 600; font-size: 0.85rem;">
-                    Bảng xem trước dữ liệu (${summary.valid}/${summary.total} dòng hợp lệ)
+                    Bảng xem trước dữ liệu chi tiết
                   </div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">
                     File: <b>${escapeHtml(file.name)}</b>
@@ -351,7 +389,7 @@ export class PartnersView extends BaseComponent {
                     </thead>
                     <tbody>
                       ${partners.map(p => `
-                        <tr style="${p.isValid ? '' : 'background: rgba(239, 68, 68, 0.05);'}">
+                        <tr style="${!p.isValid ? 'background: rgba(239, 68, 68, 0.05);' : (p.isDuplicate ? 'background: rgba(245, 158, 11, 0.05);' : '')}">
                           <td>${p.rowIndex}</td>
                           <td>
                             <div style="font-weight: 600;">${escapeHtml(p.name || "(Trống)")}</div>
@@ -369,11 +407,13 @@ export class PartnersView extends BaseComponent {
                           <td class="text-right font-mono">${p.creditLimit > 0 ? formatCurrency(p.creditLimit) : "0 VNĐ"}</td>
                           <td>${p.creditTermDays} ngày</td>
                           <td>
-                            ${p.isValid ? `
-                              <span class="validation-tag-ok"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Hợp lệ</span>
-                            ` : `
+                            ${!p.isValid ? `
                               <span class="validation-tag-err" title="${escapeHtml(p.error)}"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> ${escapeHtml(p.error)}</span>
-                            `}
+                            ` : (p.isDuplicate ? `
+                              <span class="validation-tag-dup" title="${escapeHtml(p.duplicateReason)}"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Trùng lặp</span>
+                            ` : `
+                              <span class="validation-tag-ok"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Hợp lệ</span>
+                            `)}
                           </td>
                         </tr>
                       `).join("")}
@@ -393,14 +433,33 @@ export class PartnersView extends BaseComponent {
               refreshLucideIcons();
             }
 
-            // Enable confirm button if valid rows exist
-            if (summary.valid > 0) {
-              confirmBtn.disabled = false;
-              confirmBtn.innerHTML = `<i data-lucide="upload"></i><span>Nhập ${summary.valid} Đối Tác Vào Hệ Thống</span>`;
+            // Function to update confirm button text based on duplicate mode
+            const updateConfirmBtn = () => {
+              const selectedMode = qs("input[name='dup-mode']:checked", previewArea)?.value || "SKIP";
+              if (selectedMode === "SKIP") {
+                if (summary.newCount > 0) {
+                  confirmBtn.disabled = false;
+                  confirmBtn.innerHTML = `<i data-lucide="upload"></i><span>Nhập ${summary.newCount} Đối Tác Mới (Bỏ qua ${summary.dupCount} dòng trùng)</span>`;
+                } else {
+                  confirmBtn.disabled = true;
+                  confirmBtn.innerHTML = `<span>Tất cả dòng đều bị trùng lặp</span>`;
+                }
+              } else if (selectedMode === "UPDATE") {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i data-lucide="refresh-cw"></i><span>Cập Nhật ${summary.dupCount} & Nhập ${summary.newCount} Mới</span>`;
+              } else {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i data-lucide="upload"></i><span>Nhập Toàn Bộ ${summary.valid} Đối Tác</span>`;
+              }
               refreshLucideIcons();
-            } else {
-              confirmBtn.disabled = true;
-            }
+            };
+
+            // Listen to duplicate mode radio change
+            qsa("input[name='dup-mode']", previewArea).forEach(radio => {
+              radio.onchange = updateConfirmBtn;
+            });
+
+            updateConfirmBtn();
           } catch (err) {
             Toast.error(err.message);
             if (dropzoneContent) {
@@ -424,8 +483,19 @@ export class PartnersView extends BaseComponent {
               return;
             }
 
-            stateStore.addPartnersBatch(validPartners);
-            Toast.success(`Đã nhập thành công ${validPartners.length} đối tác vào hệ thống!`);
+            const selectedMode = qs("input[name='dup-mode']:checked", previewArea)?.value || "SKIP";
+            const result = stateStore.addPartnersBatch(validPartners, selectedMode);
+
+            if (result.insertedCount > 0 && result.updatedCount > 0) {
+              Toast.success(`Đã thêm mới ${result.insertedCount} đối tác và cập nhật ${result.updatedCount} đối tác cũ!`);
+            } else if (result.insertedCount > 0) {
+              Toast.success(`Đã nhập thành công ${result.insertedCount} đối tác vào hệ thống! (Đã bỏ qua ${result.skippedCount} dòng trùng)`);
+            } else if (result.updatedCount > 0) {
+              Toast.success(`Đã cập nhật thông tin cho ${result.updatedCount} đối tác!`);
+            } else {
+              Toast.info(`Không có đối tác mới nào được thêm (Đã bỏ qua ${result.skippedCount} dòng trùng).`);
+            }
+
             Modal.close();
           };
         }
@@ -442,12 +512,14 @@ export class PartnersView extends BaseComponent {
         <div class="form-group">
           <label class="form-label">Tên Đối Tác <span class="required">*</span></label>
           <input type="text" class="form-control" id="p-name" required value="${escapeHtml(partner ? partner.name : '')}" placeholder="VD: Công ty Cổ phần Thương mại ABC">
+          <div id="p-name-warning"></div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
             <label class="form-label">Mã Đối Tác</label>
             <input type="text" class="form-control" id="p-code" value="${escapeHtml(partner ? (partner.code || partner.id) : '')}" placeholder="VD: KH-ABC01">
+            <div id="p-code-warning"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Phân Loại <span class="required">*</span></label>
@@ -463,6 +535,7 @@ export class PartnersView extends BaseComponent {
           <div class="form-group">
             <label class="form-label">Mã Số Thuế</label>
             <input type="text" class="form-control" id="p-tax" value="${escapeHtml(partner ? partner.taxCode : '')}" placeholder="VD: 0108999888">
+            <div id="p-tax-warning"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Số Điện Thoại</label>
@@ -502,18 +575,75 @@ export class PartnersView extends BaseComponent {
       bodyHtml,
       footerHtml,
       onOpen: (body, footer) => {
+        const nameInput = qs("#p-name", body);
+        const codeInput = qs("#p-code", body);
+        const taxInput = qs("#p-tax", body);
+
+        const checkDuplicateFields = () => {
+          const name = nameInput.value.trim();
+          const code = codeInput.value.trim();
+          const taxCode = taxInput.value.trim();
+
+          const dupCheck = stateStore.checkPartnerDuplicate({
+            code,
+            taxCode,
+            name,
+            excludeId: partner?.id || null
+          });
+
+          const nameWarn = qs("#p-name-warning", body);
+          const codeWarn = qs("#p-code-warning", body);
+          const taxWarn = qs("#p-tax-warning", body);
+
+          if (nameWarn) nameWarn.innerHTML = dupCheck.nameDup ? `<div class="form-duplicate-warning"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> ${escapeHtml(dupCheck.nameDup.message)}</div>` : "";
+          if (codeWarn) codeWarn.innerHTML = dupCheck.codeDup ? `<div class="form-duplicate-warning"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> ${escapeHtml(dupCheck.codeDup.message)}</div>` : "";
+          if (taxWarn) taxWarn.innerHTML = dupCheck.taxDup ? `<div class="form-duplicate-warning"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> ${escapeHtml(dupCheck.taxDup.message)}</div>` : "";
+
+          refreshLucideIcons();
+        };
+
+        if (nameInput) nameInput.oninput = checkDuplicateFields;
+        if (codeInput) codeInput.oninput = checkDuplicateFields;
+        if (taxInput) taxInput.oninput = checkDuplicateFields;
+
         qs("#btn-save-partner", footer).onclick = () => {
-          const name = qs("#p-name", body).value.trim();
+          const name = nameInput.value.trim();
+          const code = codeInput.value.trim();
+          const taxCode = taxInput.value.trim();
+
           if (!name) {
             Toast.warning("Vui lòng nhập tên đối tác!");
             return;
           }
 
+          const dupCheck = stateStore.checkPartnerDuplicate({
+            code,
+            taxCode,
+            name,
+            excludeId: partner?.id || null
+          });
+
+          if (dupCheck.codeDup) {
+            Toast.warning(dupCheck.codeDup.message);
+            return;
+          }
+
+          if (dupCheck.taxDup) {
+            Toast.warning(dupCheck.taxDup.message);
+            return;
+          }
+
+          if (dupCheck.nameDup && !isEdit) {
+            if (!confirm(`CẢNH BÁO: Tên đối tác "${name}" đã tồn tại trên hệ thống (${dupCheck.nameDup.matchedPartner.code}). Bạn có chắc chắn vẫn muốn tạo thêm bản ghi mới?`)) {
+              return;
+            }
+          }
+
           const partnerData = {
             name,
-            code: qs("#p-code", body).value.trim() || `P-${Date.now().toString(36).toUpperCase()}`,
+            code: code || `P-${Date.now().toString(36).toUpperCase()}`,
             type: qs("#p-type", body).value,
-            taxCode: qs("#p-tax", body).value.trim(),
+            taxCode,
             phone: qs("#p-phone", body).value.trim(),
             address: qs("#p-address", body).value.trim(),
             creditLimit: parseCurrency(qs("#p-credit-limit", body).value),

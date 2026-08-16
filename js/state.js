@@ -192,15 +192,79 @@ class StateStore {
   }
 
   /**
-   * Thêm hàng loạt đối tác (Batch Import từ Excel)
-   * @param {Array<Object>} partnersList
-   * @returns {Array<Object>}
+   * Kiểm tra xem thông tin đối tác có bị trùng với đối tác nào trên hệ thống không
    */
-  addPartnersBatch(partnersList = []) {
+  checkPartnerDuplicate({ code, taxCode, name, excludeId = null }) {
+    const cleanCode = (code || "").trim().toLowerCase();
+    const cleanTax = (taxCode || "").replace(/[^\d]/g, "");
+    const cleanName = (name || "").trim().toLowerCase();
+
+    let codeDup = null;
+    let taxDup = null;
+    let nameDup = null;
+
+    for (const p of this.state.partners) {
+      if (excludeId && p.id === excludeId) continue;
+
+      if (!codeDup && cleanCode && p.code && p.code.trim().toLowerCase() === cleanCode) {
+        codeDup = { field: "code", message: `Mã đối tác "${code}" đã thuộc về "${p.name}".`, matchedPartner: p };
+      }
+      if (!taxDup && cleanTax && p.taxCode && p.taxCode.replace(/[^\d]/g, "") === cleanTax) {
+        taxDup = { field: "taxCode", message: `Mã số thuế "${taxCode}" đã thuộc về "${p.name}".`, matchedPartner: p };
+      }
+      if (!nameDup && cleanName && p.name && p.name.trim().toLowerCase() === cleanName) {
+        nameDup = { field: "name", message: `Tên đối tác "${name}" đã có trên hệ thống (${p.code}).`, matchedPartner: p };
+      }
+    }
+
+    return {
+      isDuplicate: !!(codeDup || taxDup || nameDup),
+      codeDup,
+      taxDup,
+      nameDup
+    };
+  }
+
+  /**
+   * Thêm hàng loạt đối tác (Batch Import từ Excel) kèm tùy chọn xử lý trùng
+   * @param {Array<Object>} partnersList
+   * @param {"SKIP"|"UPDATE"|"ALLOW"} duplicateMode
+   * @returns {{ insertedCount: number, updatedCount: number, skippedCount: number }}
+   */
+  addPartnersBatch(partnersList = [], duplicateMode = "SKIP") {
     const now = new Date().toISOString();
-    const addedList = [];
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
 
     partnersList.forEach((p, idx) => {
+      if (!p.isValid) return;
+
+      if (p.isDuplicate && duplicateMode === "SKIP") {
+        skippedCount++;
+        return;
+      }
+
+      if (p.isDuplicate && duplicateMode === "UPDATE" && p.matchedExistingPartner) {
+        // Cập nhật thông tin cho đối tác đã có
+        const existingIdx = this.state.partners.findIndex(item => item.id === p.matchedExistingPartner.id);
+        if (existingIdx !== -1) {
+          this.state.partners[existingIdx] = {
+            ...this.state.partners[existingIdx],
+            taxCode: p.taxCode || this.state.partners[existingIdx].taxCode,
+            phone: p.phone || this.state.partners[existingIdx].phone,
+            address: p.address || this.state.partners[existingIdx].address,
+            creditLimit: p.creditLimit || this.state.partners[existingIdx].creditLimit,
+            creditTermDays: p.creditTermDays || this.state.partners[existingIdx].creditTermDays,
+            type: p.type || this.state.partners[existingIdx].type,
+            updatedAt: now
+          };
+          updatedCount++;
+        }
+        return;
+      }
+
+      // Thêm mới
       const id = p.id || `P-${Date.now().toString(36).toUpperCase()}-${idx + 1}`;
       const partnerObj = {
         ...p,
@@ -213,11 +277,11 @@ class StateStore {
         createdAt: now
       };
       this.state.partners.push(partnerObj);
-      addedList.push(partnerObj);
+      insertedCount++;
     });
 
     this.recomputeAndPersist();
-    return addedList;
+    return { insertedCount, updatedCount, skippedCount };
   }
 
   updatePartner(id, updatedFields) {
