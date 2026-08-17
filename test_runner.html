@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Automated Test Runner - Quản Lý Công Nợ</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #0f172a; color: #f8fafc; }
+    .test-card { background: #1e293b; padding: 12px 16px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid #38bdf8; }
+    .pass { border-left-color: #22c55e; color: #4ade80; }
+    .fail { border-left-color: #ef4444; color: #f87171; }
+    h1 { font-size: 1.5rem; }
+    #summary { font-size: 1.1rem; font-weight: bold; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Automated Test Runner - Quản Lý Công Nợ</h1>
+  <div id="test-results">Đang chạy kiểm thử...</div>
+  <div id="summary"></div>
+
+  <script type="module">
+    import { stateStore } from './js/state.js';
+    import { ExportService } from './js/services/export-service.js';
+    import { calculateInvoiceStatus, recalculatePartnerBalances } from './js/services/debt-engine.js';
+    import { INVOICE_STATUS, INVOICE_TYPES, PARTNER_TYPES } from './js/config.js';
+    import { formatCurrency, formatDate, toInputDateFormat } from './js/utils/formatters.js';
+
+    const resultsEl = document.getElementById('test-results');
+    const summaryEl = document.getElementById('summary');
+    resultsEl.innerHTML = '';
+    
+    let totalTests = 0;
+    let passedTests = 0;
+
+    function assert(name, condition, details = "") {
+      totalTests++;
+      const passed = !!condition;
+      if (passed) passedTests++;
+      
+      const div = document.createElement('div');
+      div.className = `test-card ${passed ? 'pass' : 'fail'}`;
+      div.innerHTML = `<strong>${passed ? '✅ PASS' : '❌ FAIL'}:</strong> ${name} ${details ? `<br><small style="color: #94a3b8;">${details}</small>` : ''}`;
+      resultsEl.appendChild(div);
+      console.log(`${passed ? 'PASS' : 'FAIL'}: ${name}`, details);
+    }
+
+    async function runTests() {
+      // Test 1: Khởi tạo stateStore
+      await stateStore.init();
+      assert("StateStore Init", stateStore.state !== null);
+
+      // Reset clean data
+      stateStore.resetAllData();
+      assert("StateStore Reset", stateStore.state.invoices.length === 0 && stateStore.state.partners.length === 0);
+
+      // Test 2: Thêm đối tác mẫu
+      const partner1 = stateStore.addPartner({
+        code: "KH-VINAMILK",
+        name: "Công ty Cổ phần Sữa Việt Nam",
+        type: PARTNER_TYPES.CUSTOMER,
+        creditLimit: 500000000,
+        creditTermDays: 30
+      });
+      assert("Tạo đối tác mẫu KH-VINAMILK", partner1 && partner1.id && partner1.code === "KH-VINAMILK");
+
+      // Test 3: Thêm hóa đơn thủ công
+      const inv1 = stateStore.addInvoice({
+        invoiceNumber: "HD-EXISTING-01",
+        partnerId: partner1.id,
+        partnerName: partner1.name,
+        type: INVOICE_TYPES.RECEIVABLE,
+        totalAmount: 50000000,
+        paidAmount: 10000000,
+        issueDate: "2026-08-01",
+        dueDate: "2026-08-31",
+        notes: "Hóa đơn cũ có sẵn trên hệ thống"
+      });
+      assert("Tạo hóa đơn mẫu HD-EXISTING-01", inv1 && inv1.id && inv1.status === INVOICE_STATUS.PARTIAL);
+      assert("Tính số dư nợ đối tác", stateStore.state.partners[0].totalReceivable === 40000000);
+
+      // Test 4: Kiểm tra trùng lặp checkInvoiceDuplicate
+      const dupCheck1 = stateStore.checkInvoiceDuplicate({ invoiceNumber: "HD-EXISTING-01" });
+      assert("Phát hiện số HĐ trùng lặp (HD-EXISTING-01)", dupCheck1.isDuplicate === true);
+
+      const dupCheck2 = stateStore.checkInvoiceDuplicate({ invoiceNumber: "HD-NEW-999" });
+      assert("Cho phép số HĐ mới (HD-NEW-999)", dupCheck2.isDuplicate === false);
+
+      // Test 5: Tạo Mock Excel File và gọi ExportService.parseInvoicesFromExcel
+      const sampleRows = [
+        {
+          "Số Hóa Đơn (*)": "HD-EXISTING-01", // Trùng với HĐ đã có
+          "Tên / Mã Đối Tác (*)": "Công ty Cổ phần Sữa Việt Nam",
+          "Phân Loại (*)": "Phải Thu (Bán Hàng)",
+          "Hàng Hóa / Dịch Vụ": "Bán hàng đợt 1 cập nhật",
+          "Ngày Phát Sinh (*)": "2026-08-01",
+          "Hạn Thanh Toán": "2026-08-31",
+          "Tổng Tiền (VNĐ) (*)": 60000000,
+          "Đã Thanh Toán (VNĐ)": 20000000,
+          "Ghi Chú": "Cập nhật lại số tiền"
+        },
+        {
+          "Số Hóa Đơn (*)": "HD-NEW-02", // Hóa đơn mới cho đối tác có sẵn
+          "Tên / Mã Đối Tác (*)": "KH-VINAMILK",
+          "Phân Loại (*)": "Phải Thu",
+          "Hàng Hóa / Dịch Vụ": "Bán lô hàng mới",
+          "Ngày Phát Sinh (*)": "2026-08-10",
+          "Hạn Thanh Toán": "2026-09-10",
+          "Tổng Tiền (VNĐ) (*)": 100000000,
+          "Đã Thanh Toán (VNĐ)": 0,
+          "Ghi Chú": "HĐ mới tinh"
+        },
+        {
+          "Số Hóa Đơn (*)": "HD-NEW-03", // Đối tác mới chưa có trong hệ thống
+          "Tên / Mã Đối Tác (*)": "Tập đoàn Viễn thông CMC",
+          "Phân Loại (*)": "Phải Trả (Mua Hàng)",
+          "Hàng Hóa / Dịch Vụ": "Thuê bao Cloud Server",
+          "Ngày Phát Sinh (*)": "2026-08-12",
+          "Hạn Thanh Toán": "",
+          "Tổng Tiền (VNĐ) (*)": 25000000,
+          "Đã Thanh Toán (VNĐ)": 0,
+          "Ghi Chú": "Tự động tạo đối tác CMC"
+        },
+        {
+          "Số Hóa Đơn (*)": "", // Dòng lỗi thiếu số hóa đơn & tiền
+          "Tên / Mã Đối Tác (*)": "",
+          "Phân Loại (*)": "",
+          "Hàng Hóa / Dịch Vụ": "",
+          "Ngày Phát Sinh (*)": "",
+          "Hạn Thanh Toán": "",
+          "Tổng Tiền (VNĐ) (*)": 0,
+          "Đã Thanh Toán (VNĐ)": 0
+        }
+      ];
+
+      // Tạo Blob Excel từ dữ liệu
+      const ws = window.XLSX.utils.json_to_sheet(sampleRows);
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const mockFile = new File([wbout], "test_invoices.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+      const parsed = await ExportService.parseInvoicesFromExcel(mockFile, stateStore.state.invoices, stateStore.state.partners);
+      assert("Phân tích cú pháp Excel (parseInvoicesFromExcel)", parsed && parsed.invoices.length === 4);
+      assert("Thống kê dòng hợp lệ (valid = 3)", parsed.summary.valid === 3);
+      assert("Thống kê phát hiện trùng (dupCount = 1)", parsed.summary.dupCount === 1);
+      assert("Thống kê phát hiện dòng mới (newCount = 2)", parsed.summary.newCount === 2);
+      assert("Thống kê phát hiện đối tác mới (newPartnerCount = 1)", parsed.summary.newPartnerCount === 1);
+      assert("Thống kê dòng lỗi (invalid = 1)", parsed.summary.invalid === 1);
+
+      // Test 6: Nhập hàng loạt với chế độ UPDATE và autoCreatePartners = true
+      const validInvoices = parsed.invoices.filter(i => i.isValid);
+      const batchResult = stateStore.addInvoicesBatch(validInvoices, "UPDATE", true);
+
+      assert("Batch Import kết quả", 
+        batchResult.insertedCount === 2 && batchResult.updatedCount === 1 && batchResult.createdPartnersCount === 1,
+        `Inserted: ${batchResult.insertedCount}, Updated: ${batchResult.updatedCount}, Created Partners: ${batchResult.createdPartnersCount}`
+      );
+
+      // Test 7: Kiểm tra danh bạ đối tác sau khi tự tạo
+      const cmcPartner = stateStore.state.partners.find(p => p.name === "Tập đoàn Viễn thông CMC");
+      assert("Tự động tạo đối tác mới (CMC)", cmcPartner !== undefined && cmcPartner.type === "VENDOR");
+      assert("Cập nhật số dư nợ Phải trả của CMC", cmcPartner && cmcPartner.totalPayable === 25000000);
+
+      // Test 8: Kiểm tra số dư nợ của đối tác Vinamilk sau khi update HĐ 1 và thêm HĐ 2
+      const vinamilk = stateStore.state.partners.find(p => p.code === "KH-VINAMILK");
+      // HĐ 1 còn nợ 60tr - 20tr = 40tr. HĐ 2 còn nợ 100tr. Tổng phải thu = 140tr.
+      assert("Cập nhật chính xác số dư nợ Vinamilk (140.000.000 VNĐ)", vinamilk.totalReceivable === 140000000, `Thực tế: ${vinamilk.totalReceivable}`);
+
+      summaryEl.innerHTML = `🏁 Hoàn thành: <strong>${passedTests}/${totalTests}</strong> bài kiểm tra thành công.`;
+      summaryEl.style.color = (passedTests === totalTests) ? '#4ade80' : '#f87171';
+    }
+
+    runTests().catch(err => {
+      console.error("Lỗi test:", err);
+      const div = document.createElement('div');
+      div.className = 'test-card fail';
+      div.innerHTML = `<strong>❌ Lỗi ngoại lệ:</strong> ${err.message}`;
+      resultsEl.appendChild(div);
+    });
+  </script>
+</body>
+</html>

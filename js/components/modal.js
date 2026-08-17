@@ -20,7 +20,7 @@ export class Modal {
       dialogEl.className = "modal-dialog" + (size ? ` modal-${size}` : " modal-md");
     }
 
-    titleEl.textContent = title || "";
+    titleEl.innerHTML = title || "";
     bodyEl.innerHTML = bodyHtml || "";
     footerEl.innerHTML = footerHtml || `
       <button class="btn btn-secondary" id="btn-modal-cancel">Đóng</button>

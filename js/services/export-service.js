@@ -627,6 +627,18 @@ export class ExportService {
                   rawType = "RECEIVABLE";
                 }
               }
+              // Đã thanh toán (Kiểm tra trước để tránh nhầm với hạn thanh toán hoặc tiền)
+              else if (
+                cleanKey.includes("dathanhtoan") ||
+                cleanKey.includes("datra") ||
+                cleanKey.includes("datt") ||
+                cleanKey.includes("tiendatra") ||
+                cleanKey.includes("paidamount") ||
+                cleanKey.includes("sotiendatra")
+              ) {
+                const numStr = String(colVal).replace(/[^\d]/g, "");
+                rawPaidAmount = parseInt(numStr, 10) || 0;
+              }
               // Hàng hóa / Dịch vụ
               else if (
                 cleanKey.includes("hanghoa") ||
@@ -657,7 +669,9 @@ export class ExportService {
                 cleanKey.includes("hanno") ||
                 cleanKey.includes("ngayhethan") ||
                 cleanKey.includes("duedate") ||
-                cleanKey.includes("han")
+                cleanKey.includes("hantt") ||
+                cleanKey.includes("thoihan") ||
+                cleanKey === "han"
               ) {
                 rawDueDateVal = colVal;
               }
@@ -674,17 +688,6 @@ export class ExportService {
               ) {
                 const numStr = String(colVal).replace(/[^\d]/g, "");
                 rawTotalAmount = parseInt(numStr, 10) || 0;
-              }
-              // Đã thanh toán
-              else if (
-                cleanKey.includes("dathanhtoan") ||
-                cleanKey.includes("datra") ||
-                cleanKey.includes("datt") ||
-                cleanKey.includes("tiendatra") ||
-                cleanKey.includes("paidamount")
-              ) {
-                const numStr = String(colVal).replace(/[^\d]/g, "");
-                rawPaidAmount = parseInt(numStr, 10) || 0;
               }
               // Ghi chú
               else if (
