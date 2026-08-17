@@ -109,8 +109,8 @@ class App {
               <button class="btn btn-secondary" id="btn-quick-add-pay" style="justify-content: flex-start; height: 48px;">
                 <i data-lucide="receipt" style="color: var(--success-600);"></i>
                 <div style="text-align: left;">
-                  <div style="font-weight: 600;">Lập Thu - Chi / Ủy Nhiệm Chi (UNC)</div>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Phiếu thu/chi tiền mặt hoặc Báo có/UNC ngân hàng</div>
+                  <div style="font-weight: 600;">Lập Thu Chi / Ủy Nhiệm (PT/PC/UNT/UNC)</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Phiếu thu/chi tiền mặt hoặc Ủy nhiệm thu/chi ngân hàng</div>
                 </div>
               </button>
 

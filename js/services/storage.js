@@ -51,10 +51,28 @@ export class StorageService {
     let paymentRequests = this.getItem(kPaymentRequests, []);
     let settings = this.getItem(kSettings, { ...DEFAULT_SETTINGS });
 
+    // Chuẩn hóa loại chứng từ và tiền tố UNT / UNC nếu là chuyển khoản
+    payments = (Array.isArray(payments) ? payments : []).map(p => {
+      const isReceipt = p.type === 'RECEIPT';
+      const isCash = p.paymentMethod === 'CASH';
+      const vType = isReceipt ? (isCash ? 'RECEIPT_CASH' : 'RECEIPT_BANK') : (isCash ? 'PAYMENT_CASH' : 'PAYMENT_BANK');
+      let pNum = p.paymentNumber || '';
+      if (vType === 'RECEIPT_BANK' && pNum.startsWith('PT-')) {
+        pNum = 'UNT-' + pNum.slice(3);
+      } else if (vType === 'PAYMENT_BANK' && pNum.startsWith('PC-')) {
+        pNum = 'UNC-' + pNum.slice(3);
+      }
+      return {
+        ...p,
+        voucherType: p.voucherType || vType,
+        paymentNumber: pNum
+      };
+    });
+
     return {
       partners: Array.isArray(partners) ? partners : [],
       invoices: Array.isArray(invoices) ? invoices : [],
-      payments: Array.isArray(payments) ? payments : [],
+      payments: payments,
       paymentRequests: Array.isArray(paymentRequests) ? paymentRequests : [],
       settings: settings || { ...DEFAULT_SETTINGS }
     };
@@ -240,10 +258,11 @@ export class StorageService {
     const payments = [
       {
         id: "PAY-2026-001",
-        paymentNumber: "PT-000102",
+        paymentNumber: "UNT-000102",
         partnerId: "KH001",
         partnerName: "Công ty Cổ phần Sữa Việt Nam (Vinamilk)",
         type: "RECEIPT",
+        voucherType: "RECEIPT_BANK",
         paymentDate: subDays(20),
         amount: 50000000,
         paymentMethod: PAYMENT_METHODS.BANK_TRANSFER,
@@ -254,10 +273,11 @@ export class StorageService {
       },
       {
         id: "PAY-2026-002",
-        paymentNumber: "PT-000103",
+        paymentNumber: "UNT-000103",
         partnerId: "KH003",
         partnerName: "Tập đoàn Công nghiệp - Viễn thông Quân đội (Viettel)",
         type: "RECEIPT",
+        voucherType: "RECEIPT_BANK",
         paymentDate: subDays(15),
         amount: 240000000,
         paymentMethod: PAYMENT_METHODS.BANK_TRANSFER,
@@ -268,10 +288,11 @@ export class StorageService {
       },
       {
         id: "PAY-2026-003",
-        paymentNumber: "PC-000045",
+        paymentNumber: "UNC-000045",
         partnerId: "NCC002",
         partnerName: "Công ty TNHH Phân Phối Dell Technologies VN",
         type: "PAYMENT",
+        voucherType: "PAYMENT_BANK",
         paymentDate: subDays(12),
         amount: 60000000,
         paymentMethod: PAYMENT_METHODS.BANK_TRANSFER,

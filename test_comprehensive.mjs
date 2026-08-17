@@ -64,7 +64,7 @@ async function runComprehensiveTests() {
     if (vType !== VOUCHER_TYPES.RECEIPT_CASH) throw new Error(`Sai: ${vType}`);
   });
 
-  test("Thu chuyển khoản -> Báo Có / Ủy Nhiệm Thu (UNT)", () => {
+  test("Thu chuyển khoản -> Ủy Nhiệm Thu (UNT)", () => {
     const vType = getVoucherType(PAYMENT_TYPES.RECEIPT, PAYMENT_METHODS.BANK_TRANSFER);
     if (vType !== VOUCHER_TYPES.RECEIPT_BANK) throw new Error(`Sai: ${vType}`);
   });

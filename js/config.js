@@ -103,14 +103,14 @@ export const PAYMENT_METHOD_LABELS = {
 // Loại chứng từ thanh toán chi tiết chuẩn Kế toán Việt Nam
 export const VOUCHER_TYPES = {
   RECEIPT_CASH: "RECEIPT_CASH",   // Phiếu Thu (Tiền mặt) -> PT-xxxx
-  RECEIPT_BANK: "RECEIPT_BANK",   // Báo Có / Ủy Nhiệm Thu (Ngân hàng) -> UNT-xxxx
+  RECEIPT_BANK: "RECEIPT_BANK",   // Ủy Nhiệm Thu (Ngân hàng) -> UNT-xxxx
   PAYMENT_CASH: "PAYMENT_CASH",   // Phiếu Chi (Tiền mặt) -> PC-xxxx
   PAYMENT_BANK: "PAYMENT_BANK"    // Ủy Nhiệm Chi (Ngân hàng) -> UNC-xxxx
 };
 
 export const VOUCHER_TYPE_LABELS = {
   RECEIPT_CASH: "Phiếu Thu (Tiền mặt)",
-  RECEIPT_BANK: "Ủy Nhiệm Thu / Báo Có (Ngân hàng)",
+  RECEIPT_BANK: "Ủy Nhiệm Thu (Ngân hàng)",
   PAYMENT_CASH: "Phiếu Chi (Tiền mặt)",
   PAYMENT_BANK: "Ủy Nhiệm Chi (Ngân hàng)"
 };

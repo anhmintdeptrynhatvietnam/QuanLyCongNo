@@ -74,7 +74,7 @@ export class PaymentsView extends BaseComponent {
           </button>
           <button class="btn btn-sm ${this.currentTypeFilter === VOUCHER_TYPES.RECEIPT_BANK ? 'btn-primary' : 'btn-secondary'}" data-pay-filter="${VOUCHER_TYPES.RECEIPT_BANK}">
             <span class="badge-dot" style="background: var(--info-600);"></span>
-            Ủy Nhiệm Thu / Báo Có (${countByType.unt})
+            Ủy Nhiệm Thu (${countByType.unt})
           </button>
           <button class="btn btn-sm ${this.currentTypeFilter === VOUCHER_TYPES.PAYMENT_CASH ? 'btn-primary' : 'btn-secondary'}" data-pay-filter="${VOUCHER_TYPES.PAYMENT_CASH}">
             <span class="badge-dot" style="background: var(--warning-600);"></span>
@@ -93,9 +93,9 @@ export class PaymentsView extends BaseComponent {
               <i data-lucide="arrow-down-left"></i>
               <span>+ Phiếu Thu (Tiền mặt)</span>
             </button>
-            <button class="btn btn-secondary btn-sm" id="btn-add-receipt-bank" style="color: var(--info-700); border-color: var(--info-500);" title="Thu tiền về tài khoản ngân hàng">
+            <button class="btn btn-secondary btn-sm" id="btn-add-receipt-bank" style="color: var(--info-700); border-color: var(--info-500);" title="Lập Ủy nhiệm thu tiền qua ngân hàng">
               <i data-lucide="building-2"></i>
-              <span>+ Báo Có / Thu TK (UNT)</span>
+              <span>+ Lập Ủy Nhiệm Thu (UNT)</span>
             </button>
           </div>
 
@@ -150,7 +150,7 @@ export class PaymentsView extends BaseComponent {
                   badgeHtml = `<span class="badge badge-paid"><i data-lucide="banknote" style="width: 12px; height: 12px;"></i> Phiếu Thu (PT)</span>`;
                   numColor = 'var(--success-600)';
                 } else if (voucherType === VOUCHER_TYPES.RECEIPT_BANK) {
-                  badgeHtml = `<span class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0369a1; border: 1px solid rgba(14, 165, 233, 0.25);"><i data-lucide="building-2" style="width: 12px; height: 12px;"></i> Báo Có / UNT</span>`;
+                  badgeHtml = `<span class="badge" style="background: rgba(14, 165, 233, 0.12); color: #0369a1; border: 1px solid rgba(14, 165, 233, 0.25);"><i data-lucide="building-2" style="width: 12px; height: 12px;"></i> Ủy Nhiệm Thu (UNT)</span>`;
                   numColor = '#0284c7';
                 } else if (voucherType === VOUCHER_TYPES.PAYMENT_CASH) {
                   badgeHtml = `<span class="badge badge-partial"><i data-lucide="banknote" style="width: 12px; height: 12px;"></i> Phiếu Chi (PC)</span>`;
@@ -250,7 +250,7 @@ export class PaymentsView extends BaseComponent {
           title = `In Phiếu Thu (${pay.paymentNumber})`;
           htmlContent = VoucherTemplates.renderReceiptCashHTML(pay, settings, partner);
         } else if (vType === VOUCHER_TYPES.RECEIPT_BANK) {
-          title = `In Báo Có / Ủy Nhiệm Thu (${pay.paymentNumber})`;
+          title = `In Ủy Nhiệm Thu (${pay.paymentNumber})`;
           htmlContent = VoucherTemplates.renderReceiptBankUNT_HTML(pay, settings, partner);
         } else if (vType === VOUCHER_TYPES.PAYMENT_CASH) {
           title = `In Phiếu Chi (${pay.paymentNumber})`;
