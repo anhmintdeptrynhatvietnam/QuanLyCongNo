@@ -50,10 +50,12 @@ a:hover {
   color: var(--primary-700);
 }
 
-/* Monospace Currency & Numbers */
-.font-mono, .amount, .code, .tag-code {
+/* Monospace Currency & Tabular Numbers */
+.font-mono, .amount, .code, .tag-code, .currency-input {
   font-family: var(--font-mono);
-  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
 }
 
 /* Scrollbars */

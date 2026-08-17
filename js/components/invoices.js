@@ -9,7 +9,7 @@ import { Modal } from './modal.js';
 import { Toast } from './toast.js';
 import { ExportService } from '../services/export-service.js';
 import { formatCurrency, formatDate, renderInvoiceStatusBadge, toInputDateFormat, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
-import { INVOICE_TYPES, INVOICE_STATUS, PAYMENT_METHODS } from '../config.js';
+import { INVOICE_TYPES, INVOICE_STATUS, PAYMENT_METHODS, getVoucherType, VOUCHER_TYPE_LABELS, VOUCHER_TYPE_PREFIXES } from '../config.js';
 import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
 
 export class InvoicesView extends BaseComponent {
@@ -713,6 +713,17 @@ export class InvoicesView extends BaseComponent {
   showQuickPayModal(invoice) {
     const remaining = Math.max(0, (Number(invoice.totalAmount) || 0) - (Number(invoice.paidAmount) || 0));
     const isReceivable = invoice.type === INVOICE_TYPES.RECEIVABLE;
+    const baseType = isReceivable ? "RECEIPT" : "PAYMENT";
+
+    const getMeta = (method) => {
+      const vType = getVoucherType(baseType, method);
+      const prefix = VOUCHER_TYPE_PREFIXES[vType] || 'CT';
+      const label = VOUCHER_TYPE_LABELS[vType];
+      const defaultNumber = `${prefix}-${Date.now().toString().slice(-6)}`;
+      return { vType, prefix, label, defaultNumber };
+    };
+
+    const initialMeta = getMeta(PAYMENT_METHODS.BANK_TRANSFER);
 
     const bodyHtml = `
       <div style="background: var(--bg-surface-subtle); padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
@@ -721,26 +732,38 @@ export class InvoicesView extends BaseComponent {
       </div>
 
       <form id="quick-pay-form">
-        <div class="form-group">
-          <label class="form-label">Số Tiền Thanh Toán (VNĐ) <span class="required">*</span></label>
-          <div class="input-group">
-            <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="qp-amount" value="${formatCurrency(remaining, false)}" placeholder="0" required>
-            <span class="input-group-text">VNĐ</span>
+        <div style="background: rgba(37, 99, 235, 0.05); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border-left: 3px solid var(--primary-500);">
+          <div style="font-size: 0.85rem; font-weight: 700;" id="qp-voucher-title">
+            Loại chứng từ: <span style="color: var(--primary-700);">${initialMeta.label}</span>
           </div>
-          <div class="currency-preview-text" id="qp-amount-preview"></div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
-            <label class="form-label">Ngày Thanh Toán</label>
-            <input type="date" class="form-control" id="qp-date" value="${toInputDateFormat(new Date())}">
+            <label class="form-label">Số Chứng Từ <span class="required">*</span></label>
+            <input type="text" class="form-control font-mono font-bold" id="qp-number" value="${initialMeta.defaultNumber}" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Phương Thức</label>
+            <label class="form-label">Phương Thức Thanh Toán</label>
             <select class="form-select" id="qp-method">
-              <option value="${PAYMENT_METHODS.BANK_TRANSFER}">Chuyển khoản</option>
-              <option value="${PAYMENT_METHODS.CASH}">Tiền mặt</option>
+              <option value="${PAYMENT_METHODS.BANK_TRANSFER}">🏦 Chuyển khoản ngân hàng</option>
+              <option value="${PAYMENT_METHODS.CASH}">💵 Tiền mặt</option>
             </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--space-3);">
+          <div class="form-group">
+            <label class="form-label">Số Tiền Thanh Toán (VNĐ) <span class="required">*</span></label>
+            <div class="input-group">
+              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="qp-amount" value="${formatCurrency(remaining, false)}" placeholder="0" required>
+              <span class="input-group-text">VNĐ</span>
+            </div>
+            <div class="currency-preview-text" id="qp-amount-preview"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ngày Thanh Toán</label>
+            <input type="date" class="form-control" id="qp-date" value="${toInputDateFormat(new Date())}">
           </div>
         </div>
 
@@ -753,28 +776,44 @@ export class InvoicesView extends BaseComponent {
 
     const footerHtml = `
       <button class="btn btn-secondary" id="btn-modal-cancel">Hủy</button>
-      <button class="btn btn-success" id="btn-confirm-quick-pay">Xác Nhận Thanh Toán</button>
+      <button class="btn ${isReceivable ? 'btn-success' : 'btn-primary'}" id="btn-confirm-quick-pay">Xác Nhận & Ghi Nhận</button>
     `;
 
     Modal.open({
-      title: isReceivable ? "Lập Phiếu Thu Tiền" : "Lập Phiếu Chi Thanh Toán",
+      title: `Thanh Toán Hóa Đơn ${invoice.invoiceNumber}`,
       bodyHtml,
       footerHtml,
       onOpen: (body, footer) => {
-        qs("#btn-confirm-quick-pay", footer).onclick = () => {
+        const methodSelect = qs("#qp-method", body);
+        const numberInput = qs("#qp-number", body);
+        const titleEl = qs("#qp-voucher-title", body);
+        const submitBtn = qs("#btn-confirm-quick-pay", footer);
+
+        methodSelect.onchange = () => {
+          const meta = getMeta(methodSelect.value);
+          titleEl.innerHTML = `Loại chứng từ: <span style="color: var(--primary-700);">${meta.label}</span>`;
+          numberInput.value = meta.defaultNumber;
+          submitBtn.textContent = `Lập ${meta.prefix} & Ghi Nhận`;
+        };
+
+        submitBtn.onclick = () => {
           const amount = parseCurrency(qs("#qp-amount", body).value);
           if (amount <= 0 || amount > remaining) {
             Toast.warning(`Số tiền thanh toán phải từ 1 đến ${formatCurrency(remaining)}!`);
             return;
           }
 
+          const method = methodSelect.value;
+          const vType = getVoucherType(baseType, method);
+
           const paymentData = {
-            paymentNumber: isReceivable ? `PT-${Date.now().toString().slice(-6)}` : `PC-${Date.now().toString().slice(-6)}`,
-            type: isReceivable ? "RECEIPT" : "PAYMENT",
+            paymentNumber: numberInput.value.trim(),
+            type: baseType,
+            paymentMethod: method,
+            voucherType: vType,
             partnerId: invoice.partnerId,
             partnerName: invoice.partnerName,
             paymentDate: qs("#qp-date", body).value,
-            paymentMethod: qs("#qp-method", body).value,
             amount,
             notes: qs("#qp-notes", body).value.trim(),
             allocations: [
@@ -783,7 +822,7 @@ export class InvoicesView extends BaseComponent {
           };
 
           stateStore.addPayment(paymentData);
-          Toast.success(`Đã ghi nhận thanh toán ${formatCurrency(amount)} thành công!`);
+          Toast.success(`Đã lập ${VOUCHER_TYPE_LABELS[vType]} thành công!`);
           Modal.close();
         };
       }

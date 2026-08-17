@@ -17,12 +17,19 @@
    - Theo dõi hạn mức công nợ (Credit Limit) và điều khoản nợ (Payment Terms).
    - Sổ chi tiết công nợ từng đối tượng.
 
-3. **Quản lý Chứng Từ & Khớp Nợ (Reconciliation)**:
-   - Ghi nhận Hóa đơn bán hàng / mua hàng phát sinh nợ.
-   - Lập Phiếu Thu / Phiếu Chi cấn trừ nợ (toàn phần hoặc từng phần).
-   - Lịch sử đối soát minh bạch, tránh sai lệch số liệu.
+3. **Quản lý Chứng Từ Thanh Toán & Ngân Hàng (Thu Chi & Khớp Nợ)**:
+   - Phân định chuẩn kế toán: **Phiếu Thu (PT) / Phiếu Chi (PC)** cho Tiền mặt; **Ủy Nhiệm Thu (UNT) / Ủy Nhiệm Chi (UNC)** cho Chuyển khoản ngân hàng.
+   - In biểu mẫu chứng từ A4/A5 chuẩn Bộ Tài Chính (Mẫu 01-TT, 02-TT, Mẫu UNC Ngân hàng).
+   - Tự động khớp nợ FIFO vào các hóa đơn còn nợ cũ nhất.
 
-4. **Xuất Báo Cáo & Đối Chiếu**:
+4. **Module Giấy Đề Nghị Thanh Toán (Payment Requests)**:
+   - Lập đề nghị thanh toán cho Hóa đơn mua hàng nợ NCC.
+   - Quản lý quy trình phê duyệt (Chờ duyệt -> Đã duyệt -> Đã chi tiền).
+   - In Giấy Đề Nghị Thanh Toán A4 đầy đủ 4 ô chữ ký chuẩn doanh nghiệp.
+   - Nút hành động 1-Click: Duyệt và tự động sinh UNC/Phiếu Chi cấn trừ công nợ ngay lập tức.
+
+5. **Bảng Tổng Hợp Công Nợ 12 Tháng & Đối Chiếu**:
+   - Bảng tổng hợp công nợ 12 tháng chuẩn kế toán, định dạng số Tabular Numerals thẳng hàng, chống cắt số.
    - Xuất Biên bản đối chiếu công nợ (PDF / Excel) có đầy đủ chữ ký, xác nhận.
    - Nhập/Xuất dữ liệu Excel hàng loạt nhanh chóng.
 

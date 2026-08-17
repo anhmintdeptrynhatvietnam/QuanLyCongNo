@@ -150,6 +150,7 @@ export class DashboardView extends BaseComponent {
             <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
               <i data-lucide="table-2" style="color: var(--primary-600);"></i>
               <span>Bảng Tổng Hợp Công Nợ Phải Thu Năm ${this.selectedYear}</span>
+              <span class="matrix-unit-badge">ĐVT: VNĐ</span>
             </div>
             <span class="badge badge-secondary font-mono" style="font-size: 0.75rem;">${filteredPartners.length} Đối Tác</span>
           </div>
@@ -172,14 +173,14 @@ export class DashboardView extends BaseComponent {
             <thead>
               <tr>
                 <th style="width: 45px; text-align: center;">STT</th>
-                <th style="width: 100px;">Mã ĐT</th>
-                <th class="sticky-col" style="min-width: 200px;">Tên Khách Hàng</th>
+                <th style="width: 110px;">Mã ĐT</th>
+                <th class="sticky-col" style="min-width: 220px;">Tên Khách Hàng</th>
                 ${Array.from({ length: 12 }, (_, i) => `
-                  <th style="text-align: right; width: 90px;">T${i + 1}</th>
+                  <th style="text-align: right; min-width: 95px; width: 95px;">T${i + 1}</th>
                 `).join('')}
-                <th style="text-align: right; width: 120px; background: rgba(37, 99, 235, 0.05); color: var(--primary-700);">Tổng Nợ</th>
-                <th style="text-align: right; width: 120px; background: rgba(16, 185, 129, 0.05); color: var(--success-700);">Đã Thu</th>
-                <th style="text-align: right; width: 120px; background: rgba(239, 68, 68, 0.05); color: var(--danger-700);">Còn Nợ</th>
+                <th style="text-align: right; min-width: 130px; background: rgba(37, 99, 235, 0.06); color: var(--primary-700);">Tổng Nợ</th>
+                <th style="text-align: right; min-width: 130px; background: rgba(16, 185, 129, 0.06); color: var(--success-700);">Đã Thu</th>
+                <th style="text-align: right; min-width: 130px; background: rgba(239, 68, 68, 0.06); color: var(--danger-700);">Còn Nợ</th>
                 <th style="text-align: center; width: 95px;">Thu Hồi</th>
               </tr>
             </thead>
@@ -197,21 +198,21 @@ export class DashboardView extends BaseComponent {
                     <td style="text-align: center; color: var(--text-muted);" class="font-mono">${idx + 1}</td>
                     <td class="font-mono" style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(item.code || '-')}</td>
                     <td class="sticky-col" style="font-weight: 600;">
-                      <a href="#reports" style="color: inherit; text-decoration: none;" title="Xem đối chiếu">${escapeHtml(item.name)}</a>
+                      <a href="#reports" style="color: inherit; text-decoration: none;" title="Bấm để xem biên bản đối chiếu">${escapeHtml(item.name)}</a>
                     </td>
-                    ${item.months.map(amt => `
-                      <td style="text-align: right;" class="font-mono ${amt > 0 ? 'cell-has-value' : 'cell-zero'}">
-                        ${amt > 0 ? formatCurrency(amt) : '-'}
+                    ${item.months.map((amt, mIdx) => `
+                      <td style="text-align: right;" class="font-mono ${amt > 0 ? 'cell-has-value' : 'cell-zero'}" title="Tháng ${mIdx + 1}: ${formatCurrency(amt)}">
+                        ${amt > 0 ? formatCurrency(amt, false) : '<span class="dash-zero">-</span>'}
                       </td>
                     `).join('')}
-                    <td style="text-align: right; font-weight: 700; background: rgba(37, 99, 235, 0.03);" class="font-mono text-primary">
-                      ${formatCurrency(item.totalDebt)}
+                    <td style="text-align: right; font-weight: 700; background: rgba(37, 99, 235, 0.03);" class="font-mono text-primary" title="Tổng phát sinh: ${formatCurrency(item.totalDebt)}">
+                      ${formatCurrency(item.totalDebt, false)}
                     </td>
-                    <td style="text-align: right; font-weight: 600; background: rgba(16, 185, 129, 0.03);" class="font-mono text-success">
-                      ${formatCurrency(item.paidAmount)}
+                    <td style="text-align: right; font-weight: 600; background: rgba(16, 185, 129, 0.03);" class="font-mono text-success" title="Đã thu: ${formatCurrency(item.paidAmount)}">
+                      ${formatCurrency(item.paidAmount, false)}
                     </td>
-                    <td style="text-align: right; font-weight: 700; background: rgba(239, 68, 68, 0.03);" class="font-mono ${item.remainingDebt > 0 ? 'text-danger' : 'text-muted'}">
-                      ${item.remainingDebt > 0 ? formatCurrency(item.remainingDebt) : '-'}
+                    <td style="text-align: right; font-weight: 700; background: rgba(239, 68, 68, 0.03);" class="font-mono ${item.remainingDebt > 0 ? 'text-danger' : 'text-muted'}" title="Còn nợ: ${formatCurrency(item.remainingDebt)}">
+                      ${item.remainingDebt > 0 ? formatCurrency(item.remainingDebt, false) : '<span class="dash-zero">-</span>'}
                     </td>
                     <td style="text-align: center;">
                       <span class="recovery-badge ${recClass}">${item.collectionRate}%</span>
@@ -225,19 +226,19 @@ export class DashboardView extends BaseComponent {
                 <td style="text-align: center;">Σ</td>
                 <td></td>
                 <td class="sticky-col" style="font-weight: 700; color: var(--primary-700);">TỔNG CỘNG (${this.selectedYear})</td>
-                ${(matrixData.grandTotals.months || Array(12).fill(0)).map(amt => `
-                  <td style="text-align: right;" class="font-mono ${amt > 0 ? 'font-bold' : ''}">
-                    ${amt > 0 ? formatCurrency(amt) : '-'}
+                ${(matrixData.grandTotals.months || Array(12).fill(0)).map((amt, mIdx) => `
+                  <td style="text-align: right;" class="font-mono ${amt > 0 ? 'font-bold' : ''}" title="Tổng T${mIdx + 1}: ${formatCurrency(amt)}">
+                    ${amt > 0 ? formatCurrency(amt, false) : '<span class="dash-zero">-</span>'}
                   </td>
                 `).join('')}
-                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-primary">
-                  ${formatCurrency(matrixData.grandTotals.totalIncurred || 0)}
+                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-primary" title="Tổng nợ năm: ${formatCurrency(matrixData.grandTotals.totalIncurred || 0)}">
+                  ${formatCurrency(matrixData.grandTotals.totalIncurred || 0, false)}
                 </td>
-                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-success">
-                  ${formatCurrency(matrixData.grandTotals.totalPaid || 0)}
+                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-success" title="Tổng đã thu: ${formatCurrency(matrixData.grandTotals.totalPaid || 0)}">
+                  ${formatCurrency(matrixData.grandTotals.totalPaid || 0, false)}
                 </td>
-                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-danger">
-                  ${formatCurrency(matrixData.grandTotals.totalRemaining || 0)}
+                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-danger" title="Tổng còn nợ: ${formatCurrency(matrixData.grandTotals.totalRemaining || 0)}">
+                  ${formatCurrency(matrixData.grandTotals.totalRemaining || 0, false)}
                 </td>
                 <td style="text-align: center;">
                   <span class="recovery-badge ${matrixData.grandTotals.overallCollectionRate >= 80 ? 'recovery-high' : matrixData.grandTotals.overallCollectionRate >= 40 ? 'recovery-mid' : 'recovery-low'}">

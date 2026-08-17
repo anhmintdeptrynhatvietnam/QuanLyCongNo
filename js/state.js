@@ -5,8 +5,8 @@
  */
 
 import { StorageService } from './services/storage.js';
-import { recalculatePartnerBalances, calculateInvoiceStatus } from './services/debt-engine.js';
-import { DEFAULT_SETTINGS } from './config.js';
+import { recalculatePartnerBalances, calculateInvoiceStatus, autoAllocatePaymentFIFO } from './services/debt-engine.js';
+import { DEFAULT_SETTINGS, PAYMENT_REQUEST_STATUS, getVoucherType, VOUCHER_TYPE_PREFIXES, INVOICE_TYPES, PAYMENT_TYPES } from './config.js';
 import { FirebaseService } from './services/firebase.js';
 
 class StateStore {
@@ -16,6 +16,7 @@ class StateStore {
       partners: [],
       invoices: [],
       payments: [],
+      paymentRequests: [],
       settings: { ...DEFAULT_SETTINGS },
       activeView: "dashboard",
       searchQuery: "",
@@ -32,6 +33,7 @@ class StateStore {
     this.state.partners = loaded.partners || [];
     this.state.invoices = loaded.invoices || [];
     this.state.payments = loaded.payments || [];
+    this.state.paymentRequests = loaded.paymentRequests || [];
     this.state.settings = loaded.settings || { ...DEFAULT_SETTINGS };
 
     this.recomputeAndPersist(false);
@@ -60,6 +62,7 @@ class StateStore {
       this.state.partners = localData.partners || [];
       this.state.invoices = localData.invoices || [];
       this.state.payments = localData.payments || [];
+      this.state.paymentRequests = localData.paymentRequests || [];
       this.state.settings = localData.settings || { ...DEFAULT_SETTINGS };
 
       // 2. Kéo dữ liệu từ Cloud Firestore
@@ -71,6 +74,7 @@ class StateStore {
           status: calculateInvoiceStatus(inv)
         }));
         this.state.payments = cloudData.payments || [];
+        this.state.paymentRequests = cloudData.paymentRequests || [];
         this.state.settings = cloudData.settings || { ...DEFAULT_SETTINGS };
       } else if (this.state.partners.length > 0 || this.state.invoices.length > 0) {
         // Nếu trên Cloud chưa có dữ liệu mà máy có dữ liệu thì đẩy lên Cloud
@@ -86,6 +90,7 @@ class StateStore {
             status: calculateInvoiceStatus(inv)
           }));
           this.state.payments = remoteData.payments || [];
+          this.state.paymentRequests = remoteData.paymentRequests || [];
           this.state.settings = remoteData.settings || { ...DEFAULT_SETTINGS };
           this.state.partners = recalculatePartnerBalances(this.state.partners, this.state.invoices);
           this.state.syncStatus = "synced";
@@ -105,6 +110,7 @@ class StateStore {
       this.state.partners = guestData.partners || [];
       this.state.invoices = guestData.invoices || [];
       this.state.payments = guestData.payments || [];
+      this.state.paymentRequests = guestData.paymentRequests || [];
       this.state.settings = guestData.settings || { ...DEFAULT_SETTINGS };
 
       this.recomputeAndPersist(true);
@@ -503,14 +509,17 @@ class StateStore {
   }
 
   // ==========================================
-  // PAYMENTS (PHIẾU THU / PHIẾU CHI)
+  // PAYMENTS (PHIẾU THU / CHI & ỦY NHIỆM THU / CHI)
   // ==========================================
 
   addPayment(paymentData) {
     const id = paymentData.id || `PAY-${Date.now().toString(36).toUpperCase()}`;
+    const voucherType = paymentData.voucherType || getVoucherType(paymentData.type, paymentData.paymentMethod);
+    
     const newPayment = {
       ...paymentData,
       id,
+      voucherType,
       amount: Number(paymentData.amount) || 0,
       createdAt: new Date().toISOString()
     };
@@ -542,8 +551,124 @@ class StateStore {
       }
     });
 
+    // Nếu có Giấy Đề Nghị Thanh Toán gắn liền với thanh toán này, khôi phục về APPROVED
+    this.state.paymentRequests.forEach(pr => {
+      if (pr.paymentId === id) {
+        pr.status = PAYMENT_REQUEST_STATUS.APPROVED;
+        delete pr.paymentId;
+      }
+    });
+
     this.state.payments = this.state.payments.filter(p => p.id !== id);
     this.recomputeAndPersist();
+  }
+
+  // ==========================================
+  // PAYMENT REQUESTS (GIẤY ĐỀ NGHỊ THANH TOÁN)
+  // ==========================================
+
+  addPaymentRequest(requestData) {
+    const id = requestData.id || `PR-${Date.now().toString(36).toUpperCase()}`;
+    const requestNumber = requestData.requestNumber || `ĐNTT-${Date.now().toString().slice(-6)}`;
+    
+    const newRequest = {
+      ...requestData,
+      id,
+      requestNumber,
+      amount: Number(requestData.amount) || 0,
+      status: requestData.status || PAYMENT_REQUEST_STATUS.PENDING,
+      createdAt: new Date().toISOString()
+    };
+
+    this.state.paymentRequests.unshift(newRequest);
+    this.recomputeAndPersist();
+    return newRequest;
+  }
+
+  updatePaymentRequest(id, updatedFields) {
+    const index = this.state.paymentRequests.findIndex(pr => pr.id === id);
+    if (index !== -1) {
+      this.state.paymentRequests[index] = {
+        ...this.state.paymentRequests[index],
+        ...updatedFields,
+        updatedAt: new Date().toISOString()
+      };
+      this.recomputeAndPersist();
+      return true;
+    }
+    return false;
+  }
+
+  deletePaymentRequest(id) {
+    const pr = this.state.paymentRequests.find(r => r.id === id);
+    if (pr && pr.status === PAYMENT_REQUEST_STATUS.PAID) {
+      throw new Error("Không thể xóa Giấy Đề Nghị Thanh Toán đã được chi tiền! Vui lòng hủy chứng từ thanh toán liên quan trước.");
+    }
+    this.state.paymentRequests = this.state.paymentRequests.filter(r => r.id !== id);
+    this.recomputeAndPersist();
+  }
+
+  approvePaymentRequest(id) {
+    return this.updatePaymentRequest(id, { status: PAYMENT_REQUEST_STATUS.APPROVED });
+  }
+
+  rejectPaymentRequest(id, reason = "") {
+    return this.updatePaymentRequest(id, {
+      status: PAYMENT_REQUEST_STATUS.REJECTED,
+      rejectReason: reason
+    });
+  }
+
+  /**
+   * Chuyển đổi Giấy Đề Nghị Thanh Toán sang Ủy Nhiệm Chi (hoặc Phiếu Chi) và cấn trừ công nợ
+   */
+  executePaymentRequestToVoucher(id, voucherOptions = {}) {
+    const pr = this.state.paymentRequests.find(r => r.id === id);
+    if (!pr) throw new Error("Không tìm thấy Giấy Đề Nghị Thanh Toán!");
+    if (pr.status === PAYMENT_REQUEST_STATUS.PAID) {
+      throw new Error("Giấy Đề Nghị Thanh Toán này đã được chi tiền trước đó!");
+    }
+
+    const isCash = pr.paymentMethod === "CASH" || voucherOptions.paymentMethod === "CASH";
+    const paymentMethod = isCash ? "CASH" : "BANK_TRANSFER";
+    const type = PAYMENT_TYPES.PAYMENT; // Chi tiền
+    const prefix = isCash ? VOUCHER_TYPE_PREFIXES.PAYMENT_CASH : VOUCHER_TYPE_PREFIXES.PAYMENT_BANK;
+    const paymentNumber = voucherOptions.paymentNumber || `${prefix}-${Date.now().toString().slice(-6)}`;
+
+    // Tự động phân bổ hóa đơn theo FIFO
+    const allocations = voucherOptions.allocations || autoAllocatePaymentFIFO(
+      pr.partnerId,
+      pr.amount,
+      INVOICE_TYPES.PAYABLE,
+      this.state.invoices
+    );
+
+    const paymentData = {
+      paymentNumber,
+      type,
+      paymentMethod,
+      voucherType: isCash ? "PAYMENT_CASH" : "PAYMENT_BANK",
+      partnerId: pr.partnerId,
+      partnerName: pr.partnerName,
+      paymentDate: voucherOptions.paymentDate || new Date().toISOString().split("T")[0],
+      amount: pr.amount,
+      bankName: pr.bankName || voucherOptions.bankName || "",
+      bankAccount: pr.bankAccount || voucherOptions.bankAccount || "",
+      bankAccountHolder: pr.bankAccountHolder || voucherOptions.bankAccountHolder || "",
+      notes: voucherOptions.notes || `Chi thanh toán theo ${pr.requestNumber}: ${pr.reason || ''}`.trim(),
+      allocations,
+      paymentRequestId: pr.id
+    };
+
+    const newPayment = this.addPayment(paymentData);
+
+    // Cập nhật trạng thái Giấy Đề Nghị Thanh Toán
+    pr.status = PAYMENT_REQUEST_STATUS.PAID;
+    pr.paymentId = newPayment.id;
+    pr.paidDate = newPayment.paymentDate;
+    this.recomputeAndPersist();
+
+    return newPayment;
   }
 
   // ==========================================
@@ -563,6 +688,7 @@ class StateStore {
     this.state.partners = demo.partners;
     this.state.invoices = demo.invoices;
     this.state.payments = demo.payments;
+    this.state.paymentRequests = demo.paymentRequests || [];
     this.state.settings = demo.settings;
     this.recomputeAndPersist();
   }
@@ -571,6 +697,7 @@ class StateStore {
     this.state.partners = [];
     this.state.invoices = [];
     this.state.payments = [];
+    this.state.paymentRequests = [];
     this.state.settings = { ...DEFAULT_SETTINGS };
     this.recomputeAndPersist();
   }

@@ -166,6 +166,49 @@
       // HĐ 1 còn nợ 60tr - 20tr = 40tr. HĐ 2 còn nợ 100tr. Tổng phải thu = 140tr.
       assert("Cập nhật chính xác số dư nợ Vinamilk (140.000.000 VNĐ)", vinamilk.totalReceivable === 140000000, `Thực tế: ${vinamilk.totalReceivable}`);
 
+      // Test 9: Kiểm tra hàm phân loại chứng từ getVoucherType
+      const { getVoucherType, VOUCHER_TYPES, PAYMENT_REQUEST_STATUS } = await import('./js/config.js');
+      assert("Phân loại Phiếu Thu (Tiền mặt - PT)", getVoucherType("RECEIPT", "CASH") === VOUCHER_TYPES.RECEIPT_CASH);
+      assert("Phân loại Ủy Nhiệm Thu (Ngân hàng - UNT)", getVoucherType("RECEIPT", "BANK_TRANSFER") === VOUCHER_TYPES.RECEIPT_BANK);
+      assert("Phân loại Phiếu Chi (Tiền mặt - PC)", getVoucherType("PAYMENT", "CASH") === VOUCHER_TYPES.PAYMENT_CASH);
+      assert("Phân loại Ủy Nhiệm Chi (Ngân hàng - UNC)", getVoucherType("PAYMENT", "BANK_TRANSFER") === VOUCHER_TYPES.PAYMENT_BANK);
+
+      // Test 10: Tạo Giấy Đề Nghị Thanh Toán cho CMC (25.000.000 VNĐ)
+      const newPR = stateStore.addPaymentRequest({
+        requestNumber: "ĐNTT-2026-TEST",
+        partnerId: cmcPartner.id,
+        partnerName: cmcPartner.name,
+        amount: 25000000,
+        requestDate: "2026-08-15",
+        deadlineDate: "2026-08-20",
+        paymentMethod: "BANK_TRANSFER",
+        bankName: "Vietcombank",
+        bankAccount: "001100123456",
+        bankAccountHolder: "TẬP ĐOÀN VIỄN THÔNG CMC",
+        reason: "Thanh toán tiền thuê server HD-NEW-03"
+      });
+      assert("Tạo Giấy Đề Nghị Thanh Toán", newPR && newPR.id && newPR.status === PAYMENT_REQUEST_STATUS.PENDING);
+
+      // Test 11: Duyệt và chuyển đổi ĐNTT sang Ủy Nhiệm Chi (UNC)
+      const approvedPR = stateStore.approvePaymentRequest(newPR.id);
+      assert("Duyệt Giấy Đề Nghị Thanh Toán", approvedPR === true && stateStore.state.paymentRequests[0].status === PAYMENT_REQUEST_STATUS.APPROVED);
+
+      const generatedPayment = stateStore.executePaymentRequestToVoucher(newPR.id, {
+        paymentDate: "2026-08-16"
+      });
+      assert("Xuất Ủy Nhiệm Chi từ ĐNTT", generatedPayment && generatedPayment.voucherType === "PAYMENT_BANK");
+      assert("Cập nhật trạng thái ĐNTT thành PAID", stateStore.state.paymentRequests[0].status === PAYMENT_REQUEST_STATUS.PAID);
+
+      // Kiểm tra hóa đơn của CMC đã được cấn trừ nợ hoàn tất
+      const cmcInvoice = stateStore.state.invoices.find(i => i.invoiceNumber === "HD-NEW-03");
+      assert("Cấn trừ hóa đơn nợ CMC thành công", cmcInvoice && cmcInvoice.paidAmount === 25000000 && cmcInvoice.status === INVOICE_STATUS.PAID);
+      assert("Số dư nợ Phải trả của CMC về 0 VNĐ", stateStore.state.partners.find(p => p.id === cmcPartner.id).totalPayable === 0);
+
+      // Test 12: Hủy chứng từ chi -> khôi phục lại ĐNTT về APPROVED và hoàn nợ hóa đơn
+      stateStore.deletePayment(generatedPayment.id);
+      assert("Khôi phục ĐNTT về APPROVED khi hủy chứng từ", stateStore.state.paymentRequests[0].status === PAYMENT_REQUEST_STATUS.APPROVED);
+      assert("Hoàn nợ hóa đơn CMC sau khi hủy chứng từ chi", stateStore.state.invoices.find(i => i.invoiceNumber === "HD-NEW-03").paidAmount === 0);
+
       summaryEl.innerHTML = `🏁 Hoàn thành: <strong>${passedTests}/${totalTests}</strong> bài kiểm tra thành công.`;
       summaryEl.style.color = (passedTests === totalTests) ? '#4ade80' : '#f87171';
     }

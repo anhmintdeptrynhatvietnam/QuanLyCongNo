@@ -1,0 +1,9 @@
+{
+  "name": "quan-ly-cong-no",
+  "version": "1.0.0",
+  "description": "Hệ thống Quản lý Công nợ Doanh nghiệp",
+  "type": "module",
+  "scripts": {
+    "test": "node test_runner_node.mjs"
+  }
+}

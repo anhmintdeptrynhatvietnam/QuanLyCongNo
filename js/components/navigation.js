@@ -51,7 +51,7 @@ export class Navigation {
 
   static handleHashChange() {
     const rawHash = window.location.hash.replace("#", "") || "dashboard";
-    const validViews = ["dashboard", "partners", "invoices", "payments", "reports", "settings"];
+    const validViews = ["dashboard", "partners", "invoices", "payment-requests", "payments", "reports", "settings"];
     const activeView = validViews.includes(rawHash) ? rawHash : "dashboard";
 
     // Update active nav class
@@ -68,7 +68,8 @@ export class Navigation {
       dashboard: "Dashboard Tổng Quan",
       partners: "Danh Mục Khách Hàng & Nhà Cung Cấp",
       invoices: "Quản Lý Hóa Đơn & Nợ Phát Sinh",
-      payments: "Quản Lý Phiếu Thu / Chi & Khớp Nợ",
+      "payment-requests": "Quản Lý Giấy Đề Nghị Thanh Toán",
+      payments: "Quản Lý Thu Chi & Chứng Từ Thanh Toán",
       reports: "Báo Cáo Tuổi Nợ & Đối Chiếu Công Nợ",
       settings: "Cài Đặt Hệ Thống & Dữ Liệu"
     };
@@ -128,7 +129,8 @@ export class Navigation {
   }
 
   static updateBadges(state) {
-    const overdueCount = state.invoices.filter(i => i.status === INVOICE_STATUS.OVERDUE).length;
+    // Overdue invoices badge
+    const overdueCount = (state.invoices || []).filter(i => i.status === INVOICE_STATUS.OVERDUE).length;
     const badge = qs("#badge-overdue-count");
     if (badge) {
       if (overdueCount > 0) {
@@ -136,6 +138,18 @@ export class Navigation {
         badge.classList.remove("hidden");
       } else {
         badge.classList.add("hidden");
+      }
+    }
+
+    // Pending payment requests badge
+    const pendingRequestsCount = (state.paymentRequests || []).filter(r => r.status === "PENDING").length;
+    const reqBadge = qs("#badge-pending-request-count");
+    if (reqBadge) {
+      if (pendingRequestsCount > 0) {
+        reqBadge.textContent = pendingRequestsCount;
+        reqBadge.classList.remove("hidden");
+      } else {
+        reqBadge.classList.add("hidden");
       }
     }
   }

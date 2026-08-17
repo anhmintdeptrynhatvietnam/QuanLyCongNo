@@ -8,6 +8,7 @@ import { Navigation } from './components/navigation.js';
 import { DashboardView } from './components/dashboard.js';
 import { PartnersView } from './components/partners.js';
 import { InvoicesView } from './components/invoices.js';
+import { PaymentRequestsView } from './components/payment-requests.js';
 import { PaymentsView } from './components/payments.js';
 import { ReportsView } from './components/reports.js';
 import { SettingsView } from './components/settings.js';
@@ -21,6 +22,7 @@ class App {
       dashboard: new DashboardView("main-content"),
       partners: new PartnersView("main-content"),
       invoices: new InvoicesView("main-content"),
+      "payment-requests": new PaymentRequestsView("main-content"),
       payments: new PaymentsView("main-content"),
       reports: new ReportsView("main-content"),
       settings: new SettingsView("main-content")
@@ -96,11 +98,19 @@ class App {
                 </div>
               </button>
 
+              <button class="btn btn-secondary" id="btn-quick-add-pr" style="justify-content: flex-start; height: 48px;">
+                <i data-lucide="clipboard-check" style="color: var(--primary-600);"></i>
+                <div style="text-align: left;">
+                  <div style="font-weight: 600;">Lập Giấy Đề Nghị Thanh Toán</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Yêu cầu chi tiền thanh toán nợ cho Nhà cung cấp</div>
+                </div>
+              </button>
+
               <button class="btn btn-secondary" id="btn-quick-add-pay" style="justify-content: flex-start; height: 48px;">
                 <i data-lucide="receipt" style="color: var(--success-600);"></i>
                 <div style="text-align: left;">
-                  <div style="font-weight: 600;">Lập Phiếu Thu / Phiếu Chi</div>
-                  <div style="font-size: 0.75rem; color: var(--text-muted);">Ghi nhận tiền về hoặc thanh toán cho NCC</div>
+                  <div style="font-weight: 600;">Lập Thu - Chi / Ủy Nhiệm Chi (UNC)</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">Phiếu thu/chi tiền mặt hoặc Báo có/UNC ngân hàng</div>
                 </div>
               </button>
 
@@ -118,6 +128,10 @@ class App {
             qs("#btn-quick-add-inv", body).onclick = () => {
               Modal.close();
               this.views.invoices.showInvoiceModal();
+            };
+            qs("#btn-quick-add-pr", body).onclick = () => {
+              Modal.close();
+              this.views["payment-requests"].showPaymentRequestModal();
             };
             qs("#btn-quick-add-pay", body).onclick = () => {
               Modal.close();

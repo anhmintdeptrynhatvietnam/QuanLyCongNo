@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   PARTNERS: "qlcn_partners_v1",
   INVOICES: "qlcn_invoices_v1",
   PAYMENTS: "qlcn_payments_v1",
+  PAYMENT_REQUESTS: "qlcn_payment_requests_v1",
   SETTINGS: "qlcn_settings_v1",
   AUDIT_LOGS: "qlcn_audit_logs_v1",
   THEME: "qlcn_theme_mode",
@@ -77,18 +78,18 @@ export const INVOICE_STATUS_LABELS = {
   OVERDUE: "Quá hạn"
 };
 
-// Loại phiếu thanh toán
+// Nhóm loại giao dịch thanh toán cơ sở
 export const PAYMENT_TYPES = {
   RECEIPT: "RECEIPT", // Thu tiền từ khách hàng
   PAYMENT: "PAYMENT"  // Trả tiền cho NCC
 };
 
 export const PAYMENT_TYPE_LABELS = {
-  RECEIPT: "Phiếu Thu",
-  PAYMENT: "Phiếu Chi"
+  RECEIPT: "Thu Tiền",
+  PAYMENT: "Chi Tiền"
 };
 
-// Phương thức thanh toán
+// Phương thức thanh toán (Tiền mặt vs Ngân hàng)
 export const PAYMENT_METHODS = {
   BANK_TRANSFER: "BANK_TRANSFER",
   CASH: "CASH"
@@ -97,6 +98,64 @@ export const PAYMENT_METHODS = {
 export const PAYMENT_METHOD_LABELS = {
   BANK_TRANSFER: "Chuyển khoản ngân hàng",
   CASH: "Tiền mặt"
+};
+
+// Loại chứng từ thanh toán chi tiết chuẩn Kế toán Việt Nam
+export const VOUCHER_TYPES = {
+  RECEIPT_CASH: "RECEIPT_CASH",   // Phiếu Thu (Tiền mặt) -> PT-xxxx
+  RECEIPT_BANK: "RECEIPT_BANK",   // Báo Có / Ủy Nhiệm Thu (Ngân hàng) -> UNT-xxxx
+  PAYMENT_CASH: "PAYMENT_CASH",   // Phiếu Chi (Tiền mặt) -> PC-xxxx
+  PAYMENT_BANK: "PAYMENT_BANK"    // Ủy Nhiệm Chi (Ngân hàng) -> UNC-xxxx
+};
+
+export const VOUCHER_TYPE_LABELS = {
+  RECEIPT_CASH: "Phiếu Thu (Tiền mặt)",
+  RECEIPT_BANK: "Ủy Nhiệm Thu / Báo Có (Ngân hàng)",
+  PAYMENT_CASH: "Phiếu Chi (Tiền mặt)",
+  PAYMENT_BANK: "Ủy Nhiệm Chi (Ngân hàng)"
+};
+
+export const VOUCHER_TYPE_SHORT_LABELS = {
+  RECEIPT_CASH: "Phiếu Thu (PT)",
+  RECEIPT_BANK: "Ủy Nhiệm Thu (UNT)",
+  PAYMENT_CASH: "Phiếu Chi (PC)",
+  PAYMENT_BANK: "Ủy Nhiệm Chi (UNC)"
+};
+
+export const VOUCHER_TYPE_PREFIXES = {
+  RECEIPT_CASH: "PT",
+  RECEIPT_BANK: "UNT",
+  PAYMENT_CASH: "PC",
+  PAYMENT_BANK: "UNC"
+};
+
+/**
+ * Tự động xác định VoucherType từ paymentType (RECEIPT/PAYMENT) và paymentMethod (CASH/BANK_TRANSFER)
+ */
+export function getVoucherType(type, method = PAYMENT_METHODS.BANK_TRANSFER) {
+  const isReceipt = type === PAYMENT_TYPES.RECEIPT || type === "RECEIPT";
+  const isCash = method === PAYMENT_METHODS.CASH || method === "CASH";
+
+  if (isReceipt) {
+    return isCash ? VOUCHER_TYPES.RECEIPT_CASH : VOUCHER_TYPES.RECEIPT_BANK;
+  } else {
+    return isCash ? VOUCHER_TYPES.PAYMENT_CASH : VOUCHER_TYPES.PAYMENT_BANK;
+  }
+}
+
+// Trạng thái Giấy Đề Nghị Thanh Toán (Payment Requests)
+export const PAYMENT_REQUEST_STATUS = {
+  PENDING: "PENDING",     // Chờ duyệt
+  APPROVED: "APPROVED",   // Đã duyệt (Chờ chi)
+  PAID: "PAID",           // Đã thanh toán / Đã xuất UNC/PC
+  REJECTED: "REJECTED"    // Từ chối
+};
+
+export const PAYMENT_REQUEST_STATUS_LABELS = {
+  PENDING: "Chờ Duyệt",
+  APPROVED: "Đã Duyệt",
+  PAID: "Đã Thanh Toán",
+  REJECTED: "Từ Chối"
 };
 
 // Các nhóm phân loại tuổi nợ (Aging Buckets)

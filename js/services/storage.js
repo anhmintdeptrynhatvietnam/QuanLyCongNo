@@ -42,17 +42,20 @@ export class StorageService {
     const kPartners = getUserStorageKey(STORAGE_KEYS.PARTNERS, userId);
     const kInvoices = getUserStorageKey(STORAGE_KEYS.INVOICES, userId);
     const kPayments = getUserStorageKey(STORAGE_KEYS.PAYMENTS, userId);
+    const kPaymentRequests = getUserStorageKey(STORAGE_KEYS.PAYMENT_REQUESTS, userId);
     const kSettings = getUserStorageKey(STORAGE_KEYS.SETTINGS, userId);
 
     let partners = this.getItem(kPartners, []);
     let invoices = this.getItem(kInvoices, []);
     let payments = this.getItem(kPayments, []);
+    let paymentRequests = this.getItem(kPaymentRequests, []);
     let settings = this.getItem(kSettings, { ...DEFAULT_SETTINGS });
 
     return {
       partners: Array.isArray(partners) ? partners : [],
       invoices: Array.isArray(invoices) ? invoices : [],
       payments: Array.isArray(payments) ? payments : [],
+      paymentRequests: Array.isArray(paymentRequests) ? paymentRequests : [],
       settings: settings || { ...DEFAULT_SETTINGS }
     };
   }
@@ -62,15 +65,17 @@ export class StorageService {
    * @param {Object} data
    * @param {string|null} userId
    */
-  static saveAll({ partners, invoices, payments, settings }, userId = null) {
+  static saveAll({ partners, invoices, payments, paymentRequests, settings }, userId = null) {
     const kPartners = getUserStorageKey(STORAGE_KEYS.PARTNERS, userId);
     const kInvoices = getUserStorageKey(STORAGE_KEYS.INVOICES, userId);
     const kPayments = getUserStorageKey(STORAGE_KEYS.PAYMENTS, userId);
+    const kPaymentRequests = getUserStorageKey(STORAGE_KEYS.PAYMENT_REQUESTS, userId);
     const kSettings = getUserStorageKey(STORAGE_KEYS.SETTINGS, userId);
 
     if (partners !== undefined) this.setItem(kPartners, partners);
     if (invoices !== undefined) this.setItem(kInvoices, invoices);
     if (payments !== undefined) this.setItem(kPayments, payments);
+    if (paymentRequests !== undefined) this.setItem(kPaymentRequests, paymentRequests);
     if (settings !== undefined) this.setItem(kSettings, settings);
   }
 
@@ -277,10 +282,54 @@ export class StorageService {
       }
     ];
 
+    const paymentRequests = [
+      {
+        id: "PR-2026-001",
+        requestNumber: "ĐNTT-2026-001",
+        partnerId: "NCC001",
+        partnerName: "Tổng Công ty Công nghệ & Giải pháp CMC",
+        amount: 95000000,
+        requestDate: subDays(5),
+        deadlineDate: addDays(10),
+        paymentMethod: PAYMENT_METHODS.BANK_TRANSFER,
+        bankName: "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)",
+        bankAccount: "0011004567890",
+        bankAccountHolder: "TỔNG CÔNG TY CÔNG NGHỆ VÀ GIẢI PHÁP CMC",
+        bankBranch: "Chi nhánh Hoàn Kiếm, Hà Nội",
+        requesterName: "Nguyễn Văn Hưng",
+        department: "Phòng CNTT & Hạ tầng",
+        reason: "Thanh toán tiền thuê hạ tầng Cloud Server 6 tháng đầu năm theo HĐ HD-NCC-881",
+        invoiceIds: ["INV-2026-005"],
+        status: "PENDING",
+        createdAt: new Date(today.getTime() - 5 * 86400000).toISOString()
+      },
+      {
+        id: "PR-2026-002",
+        requestNumber: "ĐNTT-2026-002",
+        partnerId: "NCC002",
+        partnerName: "Công ty TNHH Phân Phối Dell Technologies VN",
+        amount: 100000000,
+        requestDate: subDays(2),
+        deadlineDate: addDays(5),
+        paymentMethod: PAYMENT_METHODS.BANK_TRANSFER,
+        bankName: "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam (BIDV)",
+        bankAccount: "12010000987654",
+        bankAccountHolder: "CTY TNHH PHAN PHOI DELL TECHNOLOGIES VN",
+        bankBranch: "Chi nhánh Bến Thành, TP.HCM",
+        requesterName: "Trần Thị Mai",
+        department: "Phòng R&D",
+        reason: "Thanh toán đợt 2 - Tất toán hợp đồng 5 máy trạm Workstation Dell Precision HD-NCC-882",
+        invoiceIds: ["INV-2026-006"],
+        status: "APPROVED",
+        createdAt: new Date(today.getTime() - 2 * 86400000).toISOString()
+      }
+    ];
+
     return {
       partners,
       invoices,
       payments,
+      paymentRequests,
       settings: { ...DEFAULT_SETTINGS }
     };
   }

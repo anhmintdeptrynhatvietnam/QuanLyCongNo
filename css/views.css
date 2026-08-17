@@ -368,3 +368,65 @@
   color: var(--danger-700);
 }
 
+/* Matrix Table Unit Badge & Zero Dash */
+.matrix-unit-badge {
+  font-size: 0.7rem;
+  color: var(--primary-700);
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .matrix-unit-badge {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
+}
+
+.dash-zero {
+  color: var(--text-muted);
+  opacity: 0.4;
+  font-weight: 400;
+  font-family: var(--font-sans);
+}
+
+/* Button Group / Dropdown */
+.btn-group-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--bg-surface-subtle);
+  padding: 2px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Voucher Preview Modal Layout */
+.voucher-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.voucher-preview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.voucher-print-area {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  box-shadow: var(--shadow-md);
+}
+
