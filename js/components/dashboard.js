@@ -155,9 +155,9 @@ export class DashboardView extends BaseComponent {
           </div>
 
           <div class="flex items-center gap-3 flex-wrap">
-            <div class="search-input-wrap" style="width: 260px;">
-              <i data-lucide="search" class="search-icon"></i>
-              <input type="text" id="matrix-partner-search" class="search-input" placeholder="Tìm tên / mã khách hàng..." value="${escapeHtml(this.partnerSearchQuery)}">
+            <div class="search-box" style="width: 260px;">
+              <i data-lucide="search"></i>
+              <input type="text" id="matrix-partner-search" class="form-control" placeholder="Tìm tên / mã khách hàng..." value="${escapeHtml(this.partnerSearchQuery)}">
             </div>
 
             <button type="button" class="btn btn-secondary btn-sm" id="btn-export-monthly-matrix">

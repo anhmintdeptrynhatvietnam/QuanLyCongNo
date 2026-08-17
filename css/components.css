@@ -318,6 +318,47 @@ textarea.form-control {
   user-select: none;
 }
 
+/* Search Box Component with Integrated Icon */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-box input,
+.search-box input.form-control {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3) 0 34px !important;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-main);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 0.8125rem;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.search-box input:focus,
+.search-box input.form-control:focus {
+  border-color: var(--primary-500);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.search-box i,
+.search-box svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+
 .currency-preview-text {
   font-size: 0.775rem;
   min-height: 1.25rem;
