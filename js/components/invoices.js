@@ -240,42 +240,41 @@ export class InvoicesView extends BaseComponent {
   showImportExcelModal() {
     let parsedResult = null;
 
-    const title = `
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <i data-lucide="file-spreadsheet" style="color: var(--primary-600); width: 22px; height: 22px;"></i>
-        <span>Nhập Hóa Đơn Hàng Loạt Từ Excel (.xlsx / .csv)</span>
-      </div>
-    `;
+    const title = "Nhập Danh Sách Hóa Đơn & Nợ Phát Sinh Từ Excel";
 
     const bodyHtml = `
-      <div class="excel-import-container">
-        <!-- Hướng dẫn 3 bước -->
-        <div class="excel-step-guide">
-          <div class="step-card">
-            <div class="step-num">1</div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <!-- Phần 1: Khung Hướng Dẫn Các Bước -->
+        <div class="excel-guide-container">
+          <div class="excel-guide-step">
+            <div class="step-badge">1</div>
             <div class="step-content">
-              <div class="step-title">Tải File Mẫu Chuẩn</div>
-              <div class="step-desc">Tải file mẫu Excel (.xlsx) với các cột dữ liệu hóa đơn chuẩn</div>
+              <div class="step-title">Tải File Mẫu</div>
+              <div class="step-desc">Tải file Excel mẫu (.xlsx) định dạng sẵn các cột thông tin chuẩn kế toán.</div>
             </div>
           </div>
-          <div class="step-card">
-            <div class="step-num">2</div>
+          <div class="excel-guide-step">
+            <div class="step-badge">2</div>
             <div class="step-content">
-              <div class="step-title">Điền Dữ Liệu Hóa Đơn</div>
-              <div class="step-desc">Nhập số HĐ, đối tác, số tiền, ngày lập, hạn nợ theo mẫu</div>
+              <div class="step-title">Điền Dữ Liệu</div>
+              <div class="step-desc">Nhập danh sách hóa đơn vào file (Bắt buộc: <b>Số HĐ</b>, <b>Đối tác</b>, <b>Tổng tiền</b>).</div>
             </div>
           </div>
-          <div class="step-card">
-            <div class="step-num">3</div>
+          <div class="excel-guide-step">
+            <div class="step-badge">3</div>
             <div class="step-content">
-              <div class="step-title">Kéo Thả & Xác Nhận</div>
-              <div class="step-desc">Hệ thống phân tích, kiểm tra trùng lặp và tự động đồng bộ công nợ</div>
+              <div class="step-title">Tải Lên & Xem Trước</div>
+              <div class="step-desc">Kéo thả file vào khung bên dưới, kiểm tra bảng xem trước rồi xác nhận nhập.</div>
             </div>
           </div>
         </div>
 
-        <!-- Tải file mẫu -->
-        <div style="display: flex; justify-content: flex-end; margin-bottom: var(--space-3);">
+        <!-- Nút Tải Mẫu -->
+        <div class="flex items-center justify-between" style="background: var(--bg-surface-subtle); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-main);">
+          <div>
+            <div style="font-weight: 600; font-size: 0.875rem;">Chưa có file mẫu chuẩn?</div>
+            <div style="font-size: 0.775rem; color: var(--text-muted);">File mẫu chứa sẵn cấu trúc cột và 3 dòng ví dụ thực tế.</div>
+          </div>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-download-invoice-template">
             <i data-lucide="download"></i>
             <span>Tải File Excel Mẫu (.xlsx)</span>
