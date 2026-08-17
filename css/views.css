@@ -197,3 +197,174 @@
   flex-direction: column;
   gap: 80px;
 }
+
+/* ==========================================================================
+   DASHBOARD 12-MONTH RECEIVABLES MATRIX & EXPANDED CHARTS
+   ========================================================================== */
+
+.dashboard-section {
+  margin-bottom: var(--space-6);
+}
+
+.dashboard-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.dashboard-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.dashboard-charts-2col {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+@media (max-width: 1200px) {
+  .dashboard-charts-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 12-Month Matrix Table */
+.monthly-matrix-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+
+.monthly-matrix-toolbar {
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--border-main);
+  flex-wrap: wrap;
+  background: var(--bg-surface-subtle);
+}
+
+.monthly-matrix-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 480px;
+}
+
+.monthly-matrix-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+
+.monthly-matrix-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface-subtle);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 2px solid var(--border-main);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.monthly-matrix-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.monthly-matrix-table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+
+/* Sticky first column */
+.monthly-matrix-table th.sticky-col,
+.monthly-matrix-table td.sticky-col {
+  position: sticky;
+  left: 0;
+  background: var(--bg-surface);
+  z-index: 5;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.monthly-matrix-table th.sticky-col {
+  z-index: 15;
+  background: var(--bg-surface-subtle);
+}
+
+.monthly-matrix-table tbody tr:hover td.sticky-col {
+  background: var(--bg-hover);
+}
+
+.monthly-matrix-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-surface-subtle);
+  font-weight: 700;
+  border-top: 2px solid var(--border-strong);
+  z-index: 8;
+}
+
+.monthly-matrix-table tfoot td.sticky-col {
+  z-index: 18;
+}
+
+/* Month cell states */
+.cell-has-value {
+  font-weight: 600;
+  color: var(--primary-700);
+  background: rgba(37, 99, 235, 0.03);
+}
+
+.cell-zero {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* Collection Rate Badge */
+.recovery-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.recovery-high {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success-700);
+}
+
+.recovery-mid {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+.recovery-low {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger-700);
+}
+

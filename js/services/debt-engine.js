@@ -4,7 +4,7 @@
  * Hoàn toàn độc lập với UI, phục vụ tính toán chính xác số dư nợ, tuổi nợ, cấn trừ và dòng tiền.
  */
 
-import { INVOICE_STATUS, INVOICE_TYPES, AGING_BUCKETS } from '../config.js';
+import { INVOICE_STATUS, INVOICE_TYPES, AGING_BUCKETS, PARTNER_TYPES } from '../config.js';
 
 /**
  * Tính toán trạng thái chính xác của hóa đơn dựa trên số tiền và hạn nợ
@@ -230,3 +230,139 @@ export function calculateDashboardKPIs(partners = [], invoices = [], payments = 
     urgentOverdueInvoices: urgentOverdueInvoices.slice(0, 5) // Lấy top 5 nợ khẩn cấp
   };
 }
+
+/**
+ * Tổng hợp ma trận công nợ 12 tháng theo đối tác (Chuẩn biểu mẫu kế toán doanh nghiệp)
+ * @param {Array} partners 
+ * @param {Array} invoices 
+ * @param {Array} payments 
+ * @param {number} [targetYear=2026] 
+ * @returns {Object} { year, availableYears, monthlySummary, partnerMatrix, topDebtors, grandTotals }
+ */
+export function calculateMonthlyReceivablesMatrix(partners = [], invoices = [], payments = [], targetYear = new Date().getFullYear()) {
+  const currentYear = Number(targetYear) || new Date().getFullYear();
+  
+  // Thu thập danh sách các năm có phát sinh dữ liệu
+  const yearsSet = new Set([currentYear]);
+  invoices.forEach(inv => {
+    if (inv.issueDate) {
+      const yr = new Date(inv.issueDate).getFullYear();
+      if (!isNaN(yr)) yearsSet.add(yr);
+    }
+  });
+  const availableYears = Array.from(yearsSet).sort((a, b) => b - a);
+
+  // Khởi tạo mảng 12 tháng tổng hợp
+  const monthlySummary = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    label: `T${i + 1}`,
+    fullLabel: `Tháng ${i + 1}`,
+    incurred: 0,
+    paid: 0,
+    remaining: 0,
+    invoiceCount: 0,
+    collectionRate: 0
+  }));
+
+  // Lọc đối tác khách hàng
+  const customerPartners = partners.filter(p => p.type === PARTNER_TYPES.CUSTOMER || p.type === PARTNER_TYPES.BOTH || !p.type);
+
+  // Map ma trận theo đối tác
+  const partnerMap = new Map();
+  customerPartners.forEach(p => {
+    partnerMap.set(p.id, {
+      id: p.id,
+      code: p.code || p.id,
+      name: p.name,
+      months: Array(12).fill(0),
+      totalDebt: 0,
+      paidAmount: 0,
+      remainingDebt: 0,
+      collectionRate: 0,
+      invoiceCount: 0
+    });
+  });
+
+  // Quét hóa đơn phải thu trong năm
+  invoices.forEach(inv => {
+    if (inv.type !== INVOICE_TYPES.RECEIVABLE) return;
+    if (!inv.issueDate) return;
+
+    const invDate = new Date(inv.issueDate);
+    if (isNaN(invDate.getTime())) return;
+    if (invDate.getFullYear() !== currentYear) return;
+
+    const mIdx = invDate.getMonth(); // 0-11
+    const totalAmt = Number(inv.totalAmount) || 0;
+    const paidAmt = Math.min(Number(inv.paidAmount) || 0, totalAmt);
+
+    // Cập nhật thống kê tháng
+    monthlySummary[mIdx].incurred += totalAmt;
+    monthlySummary[mIdx].paid += paidAmt;
+    monthlySummary[mIdx].remaining += Math.max(0, totalAmt - paidAmt);
+    monthlySummary[mIdx].invoiceCount += 1;
+
+    // Cập nhật ma trận đối tác
+    let partnerRow = partnerMap.get(inv.partnerId);
+    if (!partnerRow) {
+      partnerRow = {
+        id: inv.partnerId || `P-${Date.now().toString(36)}`,
+        code: inv.partnerName,
+        name: inv.partnerName || "Khách hàng vãng lai",
+        months: Array(12).fill(0),
+        totalDebt: 0,
+        paidAmount: 0,
+        remainingDebt: 0,
+        collectionRate: 0,
+        invoiceCount: 0
+      };
+      partnerMap.set(partnerRow.id, partnerRow);
+    }
+
+    partnerRow.months[mIdx] += totalAmt;
+    partnerRow.totalDebt += totalAmt;
+    partnerRow.paidAmount += paidAmt;
+    partnerRow.remainingDebt += Math.max(0, totalAmt - paidAmt);
+    partnerRow.invoiceCount += 1;
+  });
+
+  // Tính tỷ lệ thu hồi cho từng tháng
+  monthlySummary.forEach(m => {
+    m.collectionRate = m.incurred > 0 ? Math.round((m.paid / m.incurred) * 100) : (m.paid > 0 ? 100 : 0);
+  });
+
+  // Tính tỷ lệ thu hồi cho từng đối tác
+  const partnerMatrix = Array.from(partnerMap.values())
+    .map(p => ({
+      ...p,
+      collectionRate: p.totalDebt > 0 ? Math.round((p.paidAmount / p.totalDebt) * 100) : (p.paidAmount > 0 ? 100 : 0)
+    }))
+    .filter(p => p.totalDebt > 0 || p.remainingDebt > 0)
+    .sort((a, b) => b.remainingDebt - a.remainingDebt || b.totalDebt - a.totalDebt);
+
+  // Top 10 đối tác nợ lớn nhất
+  const topDebtors = partnerMatrix.slice(0, 10);
+
+  // Grand Totals
+  const grandTotals = {
+    year: currentYear,
+    months: monthlySummary.map(m => m.incurred),
+    totalIncurred: monthlySummary.reduce((sum, m) => sum + m.incurred, 0),
+    totalPaid: monthlySummary.reduce((sum, m) => sum + m.paid, 0),
+    totalRemaining: monthlySummary.reduce((sum, m) => sum + m.remaining, 0),
+    overallCollectionRate: 0
+  };
+  grandTotals.overallCollectionRate = grandTotals.totalIncurred > 0 
+    ? Math.round((grandTotals.totalPaid / grandTotals.totalIncurred) * 100) 
+    : 0;
+
+  return {
+    year: currentYear,
+    availableYears,
+    monthlySummary,
+    partnerMatrix,
+    topDebtors,
+    grandTotals
+  };
+}
+

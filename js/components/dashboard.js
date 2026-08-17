@@ -1,25 +1,42 @@
 /**
- * DASHBOARD VIEW - QUẢN LÝ CÔNG NỢ
- * Hiển thị 4 KPI Cards nợ, Biểu đồ phân tích tuổi nợ Chart.js, Danh sách nợ quá hạn khẩn cấp.
+ * DASHBOARD VIEW - QUẢN LÝ CÔNG NỢ DOANH NGHIỆP
+ * Hiển thị KPI, Biểu đồ Diễn biến Công nợ & Dòng tiền 12 Tháng, Cơ cấu Top Đối tác,
+ * Bảng Ma trận Công nợ 12 Tháng (Chuẩn biểu mẫu kế toán), Phân tích Tuổi nợ và Nợ quá hạn khẩn cấp.
  */
 
 import { BaseComponent } from './base-component.js';
-import { calculateDashboardKPIs } from '../services/debt-engine.js';
+import { calculateDashboardKPIs, calculateMonthlyReceivablesMatrix } from '../services/debt-engine.js';
+import { ExportService } from '../services/export-service.js';
+import { Toast } from './toast.js';
 import { formatCurrency, formatDate, renderInvoiceStatusBadge } from '../utils/formatters.js';
 import { AGING_BUCKETS } from '../config.js';
-import { qs, escapeHtml } from '../utils/dom.js';
+import { qs, qsa, escapeHtml } from '../utils/dom.js';
 
 export class DashboardView extends BaseComponent {
   constructor(containerId) {
     super(containerId);
     this.agingChart = null;
+    this.monthlyTrendChart = null;
+    this.topDebtorsChart = null;
+    this.selectedYear = new Date().getFullYear();
+    this.partnerSearchQuery = "";
   }
 
   render(state) {
     const kpis = calculateDashboardKPIs(state.partners, state.invoices, state.payments);
+    const matrixData = calculateMonthlyReceivablesMatrix(state.partners, state.invoices, state.payments, this.selectedYear);
+
+    // Lọc danh sách đối tác theo thanh tìm kiếm
+    const cleanSearch = this.partnerSearchQuery.trim().toLowerCase();
+    const filteredPartners = cleanSearch
+      ? matrixData.partnerMatrix.filter(p => 
+          (p.name && p.name.toLowerCase().includes(cleanSearch)) || 
+          (p.code && p.code.toLowerCase().includes(cleanSearch))
+        )
+      : matrixData.partnerMatrix;
 
     return `
-      <!-- 4 KPI Cards Grid -->
+      <!-- 1. 4 KPI Cards Grid -->
       <div class="kpi-grid">
         <!-- Phải Thu Khách Hàng -->
         <div class="kpi-card kpi-receivable">
@@ -80,7 +97,160 @@ export class DashboardView extends BaseComponent {
         </div>
       </div>
 
-      <!-- Charts & Visuals Grid -->
+      <!-- 2. Section: Diễn Biến & Cơ Cấu Công Nợ 12 Tháng -->
+      <div class="dashboard-section">
+        <div class="dashboard-section-header">
+          <div class="dashboard-section-title">
+            <i data-lucide="trending-up" style="color: var(--primary-600);"></i>
+            <span>Diễn Biến Công Nợ & Thu Tiền Theo Tháng (${this.selectedYear})</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="font-size: 0.8125rem; font-weight: 600; color: var(--text-muted);">Chọn Năm:</span>
+            <select id="matrix-year-select" class="form-control" style="width: 100px; padding: var(--space-1) var(--space-2); font-weight: 700; font-size: 0.875rem;">
+              ${matrixData.availableYears.map(yr => `
+                <option value="${yr}" ${yr === this.selectedYear ? 'selected' : ''}>${yr}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-charts-2col">
+          <!-- Biểu Đồ Diễn Biến 12 Tháng -->
+          <div class="chart-card">
+            <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-3); margin-bottom: var(--space-3);">
+              <div class="card-title" style="font-size: 0.9rem;">
+                <i data-lucide="line-chart" style="color: var(--primary-600);"></i>
+                <span>Phát Sinh Nợ Mới vs Thu Hồi Tiền Thực Tế (12 Tháng)</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="chart-monthly-trend-canvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Biểu Đồ Top 10 Khách Hàng Nợ Lớn Nhất -->
+          <div class="chart-card">
+            <div class="card-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: var(--space-3); margin-bottom: var(--space-3);">
+              <div class="card-title" style="font-size: 0.9rem;">
+                <i data-lucide="pie-chart" style="color: var(--primary-600);"></i>
+                <span>Top Khách Hàng Có Phát Sinh Nợ Lớn Nhất</span>
+              </div>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="chart-top-debtors-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Section: Bảng Tổng Hợp Công Nợ Phải Thu 12 Tháng Theo Đối Tác (Chuẩn Kế Toán) -->
+      <div class="monthly-matrix-card">
+        <div class="monthly-matrix-toolbar">
+          <div class="flex items-center gap-3">
+            <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="table-2" style="color: var(--primary-600);"></i>
+              <span>Bảng Tổng Hợp Công Nợ Phải Thu Năm ${this.selectedYear}</span>
+            </div>
+            <span class="badge badge-secondary font-mono" style="font-size: 0.75rem;">${filteredPartners.length} Đối Tác</span>
+          </div>
+
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="search-input-wrap" style="width: 260px;">
+              <i data-lucide="search" class="search-icon"></i>
+              <input type="text" id="matrix-partner-search" class="search-input" placeholder="Tìm tên / mã khách hàng..." value="${escapeHtml(this.partnerSearchQuery)}">
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-monthly-matrix">
+              <i data-lucide="file-spreadsheet"></i>
+              <span>Xuất Excel Bảng 12 Tháng</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="monthly-matrix-wrapper">
+          <table class="monthly-matrix-table" id="monthly-matrix-table">
+            <thead>
+              <tr>
+                <th style="width: 45px; text-align: center;">STT</th>
+                <th style="width: 100px;">Mã ĐT</th>
+                <th class="sticky-col" style="min-width: 200px;">Tên Khách Hàng</th>
+                ${Array.from({ length: 12 }, (_, i) => `
+                  <th style="text-align: right; width: 90px;">T${i + 1}</th>
+                `).join('')}
+                <th style="text-align: right; width: 120px; background: rgba(37, 99, 235, 0.05); color: var(--primary-700);">Tổng Nợ</th>
+                <th style="text-align: right; width: 120px; background: rgba(16, 185, 129, 0.05); color: var(--success-700);">Đã Thu</th>
+                <th style="text-align: right; width: 120px; background: rgba(239, 68, 68, 0.05); color: var(--danger-700);">Còn Nợ</th>
+                <th style="text-align: center; width: 95px;">Thu Hồi</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-table-body">
+              ${filteredPartners.length === 0 ? `
+                <tr>
+                  <td colspan="19" style="text-align: center; padding: var(--space-6); color: var(--text-muted);">
+                    Không tìm thấy dữ liệu công nợ phù hợp trong năm ${this.selectedYear}.
+                  </td>
+                </tr>
+              ` : filteredPartners.map((item, idx) => {
+                const recClass = item.collectionRate >= 80 ? 'recovery-high' : item.collectionRate >= 40 ? 'recovery-mid' : 'recovery-low';
+                return `
+                  <tr>
+                    <td style="text-align: center; color: var(--text-muted);" class="font-mono">${idx + 1}</td>
+                    <td class="font-mono" style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(item.code || '-')}</td>
+                    <td class="sticky-col" style="font-weight: 600;">
+                      <a href="#reports" style="color: inherit; text-decoration: none;" title="Xem đối chiếu">${escapeHtml(item.name)}</a>
+                    </td>
+                    ${item.months.map(amt => `
+                      <td style="text-align: right;" class="font-mono ${amt > 0 ? 'cell-has-value' : 'cell-zero'}">
+                        ${amt > 0 ? formatCurrency(amt) : '-'}
+                      </td>
+                    `).join('')}
+                    <td style="text-align: right; font-weight: 700; background: rgba(37, 99, 235, 0.03);" class="font-mono text-primary">
+                      ${formatCurrency(item.totalDebt)}
+                    </td>
+                    <td style="text-align: right; font-weight: 600; background: rgba(16, 185, 129, 0.03);" class="font-mono text-success">
+                      ${formatCurrency(item.paidAmount)}
+                    </td>
+                    <td style="text-align: right; font-weight: 700; background: rgba(239, 68, 68, 0.03);" class="font-mono ${item.remainingDebt > 0 ? 'text-danger' : 'text-muted'}">
+                      ${item.remainingDebt > 0 ? formatCurrency(item.remainingDebt) : '-'}
+                    </td>
+                    <td style="text-align: center;">
+                      <span class="recovery-badge ${recClass}">${item.collectionRate}%</span>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style="text-align: center;">Σ</td>
+                <td></td>
+                <td class="sticky-col" style="font-weight: 700; color: var(--primary-700);">TỔNG CỘNG (${this.selectedYear})</td>
+                ${(matrixData.grandTotals.months || Array(12).fill(0)).map(amt => `
+                  <td style="text-align: right;" class="font-mono ${amt > 0 ? 'font-bold' : ''}">
+                    ${amt > 0 ? formatCurrency(amt) : '-'}
+                  </td>
+                `).join('')}
+                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-primary">
+                  ${formatCurrency(matrixData.grandTotals.totalIncurred || 0)}
+                </td>
+                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-success">
+                  ${formatCurrency(matrixData.grandTotals.totalPaid || 0)}
+                </td>
+                <td style="text-align: right; font-weight: 700; font-size: 0.875rem;" class="font-mono text-danger">
+                  ${formatCurrency(matrixData.grandTotals.totalRemaining || 0)}
+                </td>
+                <td style="text-align: center;">
+                  <span class="recovery-badge ${matrixData.grandTotals.overallCollectionRate >= 80 ? 'recovery-high' : matrixData.grandTotals.overallCollectionRate >= 40 ? 'recovery-mid' : 'recovery-low'}">
+                    ${matrixData.grandTotals.overallCollectionRate || 0}%
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. Section: Tuổi Nợ & Nợ Quá Hạn Khẩn Cấp -->
       <div class="charts-grid">
         <!-- Biểu Đồ Phân Phối Tuổi Nợ -->
         <div class="chart-card">
@@ -147,9 +317,204 @@ export class DashboardView extends BaseComponent {
 
   afterRender(state) {
     const kpis = calculateDashboardKPIs(state.partners, state.invoices, state.payments);
-    const canvas = qs("#chart-aging-canvas");
+    const matrixData = calculateMonthlyReceivablesMatrix(state.partners, state.invoices, state.payments, this.selectedYear);
 
-    if (canvas && window.Chart) {
+    // 1. Năm theo dõi (Year Selector)
+    const yearSelect = qs("#matrix-year-select", this.container);
+    if (yearSelect) {
+      yearSelect.onchange = (e) => {
+        this.selectedYear = parseInt(e.target.value, 10);
+        this.update(state);
+      };
+    }
+
+    // 2. Tìm kiếm đối tác trên bảng ma trận
+    const searchInput = qs("#matrix-partner-search", this.container);
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        this.partnerSearchQuery = e.target.value;
+        const cleanSearch = this.partnerSearchQuery.trim().toLowerCase();
+        const rows = qsa("#matrix-table-body tr", this.container);
+        rows.forEach(tr => {
+          const text = tr.textContent.toLowerCase();
+          tr.style.display = text.includes(cleanSearch) ? "" : "none";
+        });
+      };
+    }
+
+    // 3. Nút xuất Excel Bảng 12 Tháng
+    const exportBtn = qs("#btn-export-monthly-matrix", this.container);
+    if (exportBtn) {
+      exportBtn.onclick = () => {
+        try {
+          ExportService.exportMonthlyReceivablesMatrixToExcel(matrixData, this.selectedYear);
+          Toast.success(`Đã xuất Bảng tổng hợp công nợ 12 tháng năm ${this.selectedYear} thành công!`);
+        } catch (err) {
+          Toast.error("Lỗi xuất Excel: " + err.message);
+        }
+      };
+    }
+
+    // 4. Biểu đồ 1: Diễn Biến Công Nợ & Thu Tiền 12 Tháng (Bar + Line)
+    const monthlyTrendCanvas = qs("#chart-monthly-trend-canvas", this.container);
+    if (monthlyTrendCanvas && window.Chart) {
+      if (this.monthlyTrendChart) {
+        this.monthlyTrendChart.destroy();
+      }
+
+      const monthLabels = matrixData.monthlySummary.map(m => m.label);
+      const incurredData = matrixData.monthlySummary.map(m => m.incurred);
+      const paidData = matrixData.monthlySummary.map(m => m.paid);
+      const remainingData = matrixData.monthlySummary.map(m => m.remaining);
+
+      this.monthlyTrendChart = new window.Chart(monthlyTrendCanvas, {
+        type: 'bar',
+        data: {
+          labels: monthLabels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Phát sinh mới (Bán chịu)',
+              data: incurredData,
+              backgroundColor: 'rgba(37, 99, 235, 0.85)',
+              hoverBackgroundColor: 'rgba(37, 99, 235, 1)',
+              borderRadius: 4,
+              order: 2
+            },
+            {
+              type: 'bar',
+              label: 'Đã thu tiền',
+              data: paidData,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              hoverBackgroundColor: 'rgba(16, 185, 129, 1)',
+              borderRadius: 4,
+              order: 3
+            },
+            {
+              type: 'line',
+              label: 'Dư nợ còn lại',
+              data: remainingData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#f59e0b',
+              pointRadius: 4,
+              fill: false,
+              tension: 0.3,
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 12,
+                font: { size: 11, weight: '600' }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => `${(val / 1000000).toLocaleString('vi-VN')} Tr`
+              },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    // 5. Biểu đồ 2: Top 10 Khách Hàng Nợ Lớn Nhất (Stacked Horizontal Bar)
+    const topDebtorsCanvas = qs("#chart-top-debtors-canvas", this.container);
+    if (topDebtorsCanvas && window.Chart) {
+      if (this.topDebtorsChart) {
+        this.topDebtorsChart.destroy();
+      }
+
+      const top10 = matrixData.topDebtors.slice(0, 8); // Top 8 hiển thị gọn đẹp
+      const partnerLabels = top10.map(p => p.name.length > 16 ? p.name.slice(0, 15) + '...' : p.name);
+      const paidData = top10.map(p => p.paidAmount);
+      const remainingData = top10.map(p => p.remainingDebt);
+
+      this.topDebtorsChart = new window.Chart(topDebtorsCanvas, {
+        type: 'bar',
+        data: {
+          labels: partnerLabels,
+          datasets: [
+            {
+              label: 'Đã thanh toán',
+              data: paidData,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderRadius: 4
+            },
+            {
+              label: 'Còn nợ',
+              data: remainingData,
+              backgroundColor: 'rgba(239, 68, 68, 0.85)',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              stacked: true,
+              beginAtZero: true,
+              ticks: {
+                callback: (val) => `${(val / 1000000).toLocaleString('vi-VN')} Tr`
+              },
+              grid: { color: 'rgba(0,0,0,0.05)' }
+            },
+            y: {
+              stacked: true,
+              grid: { display: false },
+              ticks: {
+                font: { size: 10.5, weight: '600' }
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 12,
+                font: { size: 11, weight: '600' }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 6. Biểu Đồ Tuổi Nợ (Aging Chart)
+    const agingCanvas = qs("#chart-aging-canvas", this.container);
+    if (agingCanvas && window.Chart) {
       if (this.agingChart) {
         this.agingChart.destroy();
       }
@@ -178,7 +543,7 @@ export class DashboardView extends BaseComponent {
         AGING_BUCKETS.OVERDUE_OVER_90.color
       ];
 
-      this.agingChart = new window.Chart(canvas, {
+      this.agingChart = new window.Chart(agingCanvas, {
         type: 'bar',
         data: {
           labels,
@@ -187,7 +552,7 @@ export class DashboardView extends BaseComponent {
             data: dataValues,
             backgroundColor: colors,
             borderRadius: 6,
-            barThickness: 36
+            barThickness: 32
           }]
         },
         options: {
@@ -197,7 +562,7 @@ export class DashboardView extends BaseComponent {
             legend: { display: false },
             tooltip: {
               callbacks: {
-                label: (ctx) => `Số nợ: ${formatCurrency(ctx.raw)}`
+                label: (ctx) => ` Số nợ: ${formatCurrency(ctx.raw)}`
               }
             }
           },
@@ -223,5 +588,14 @@ export class DashboardView extends BaseComponent {
       this.agingChart.destroy();
       this.agingChart = null;
     }
+    if (this.monthlyTrendChart) {
+      this.monthlyTrendChart.destroy();
+      this.monthlyTrendChart = null;
+    }
+    if (this.topDebtorsChart) {
+      this.topDebtorsChart.destroy();
+      this.topDebtorsChart = null;
+    }
   }
 }
+

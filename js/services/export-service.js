@@ -861,5 +861,74 @@ export class ExportService {
       reader.readAsArrayBuffer(file);
     });
   }
+
+  /**
+   * Xuất Bảng tổng hợp công nợ phải thu 12 tháng ra Excel theo chuẩn kế toán
+   * @param {Object} matrixData Dữ liệu từ calculateMonthlyReceivablesMatrix
+   * @param {number} year 
+   */
+  static exportMonthlyReceivablesMatrixToExcel(matrixData, year = new Date().getFullYear()) {
+    if (!window.XLSX) {
+      alert("Thư viện SheetJS chưa được tải!");
+      return;
+    }
+
+    const { partnerMatrix = [], grandTotals = {} } = matrixData;
+
+    const rows = partnerMatrix.map((item, idx) => {
+      const row = {
+        "STT": idx + 1,
+        "Mã Đối Tác": item.code || item.id,
+        "Tên Khách Hàng": item.name,
+      };
+
+      // 12 Tháng
+      for (let m = 1; m <= 12; m++) {
+        row[`Tháng ${m}.${year}`] = item.months[m - 1] || 0;
+      }
+
+      row["TỔNG NỢ (VNĐ)"] = item.totalDebt || 0;
+      row["Đã Thanh Toán (VNĐ)"] = item.paidAmount || 0;
+      row["Còn Nợ (VNĐ)"] = item.remainingDebt || 0;
+      row["Tỷ Lệ Thu Hồi (%)"] = `${item.collectionRate || 0}%`;
+
+      return row;
+    });
+
+    // Dòng Tổng Cộng
+    const totalRow = {
+      "STT": "TỔNG CỘNG",
+      "Mã Đối Tác": "",
+      "Tên Khách Hàng": "TỔNG NỢ TOÀN DOANH NGHIỆP",
+    };
+    for (let m = 1; m <= 12; m++) {
+      totalRow[`Tháng ${m}.${year}`] = (grandTotals.months && grandTotals.months[m - 1]) || 0;
+    }
+    totalRow["TỔNG NỢ (VNĐ)"] = grandTotals.totalIncurred || 0;
+    totalRow["Đã Thanh Toán (VNĐ)"] = grandTotals.totalPaid || 0;
+    totalRow["Còn Nợ (VNĐ)"] = grandTotals.totalRemaining || 0;
+    totalRow["Tỷ Lệ Thu Hồi (%)"] = `${grandTotals.overallCollectionRate || 0}%`;
+
+    rows.push(totalRow);
+
+    const worksheet = window.XLSX.utils.json_to_sheet(rows);
+
+    // Cài đặt độ rộng cột
+    worksheet["!cols"] = [
+      { wch: 12 }, // STT
+      { wch: 16 }, // Mã
+      { wch: 38 }, // Tên KH
+      ...Array(12).fill({ wch: 16 }), // 12 Tháng
+      { wch: 20 }, // Tổng Nợ
+      { wch: 20 }, // Đã Thu
+      { wch: 20 }, // Còn Nợ
+      { wch: 16 }  // Tỷ lệ
+    ];
+
+    const workbook = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(workbook, worksheet, `Tong_Hop_Cong_No_${year}`);
+    window.XLSX.writeFile(workbook, `Bang_Tong_Hop_Cong_No_Phai_Thu_${year}_${toInputDateFormat(new Date())}.xlsx`);
+  }
 }
+
 

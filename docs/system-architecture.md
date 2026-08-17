@@ -136,3 +136,24 @@ Hệ thống hỗ trợ nhập dữ liệu hàng loạt từ các định dạng
 - Kiểm tra trùng lặp số hóa đơn trên hệ thống và trong nội bộ file Excel.
 - Tự động kích hoạt `recalculatePartnerBalances` để cập nhật tức thời dư nợ 2 chiều và báo cáo tuổi nợ sau khi nhập.
 
+---
+
+## 6. Hệ Thống Theo Dõi Công Nợ 12 Tháng & Bảng Tổng Hợp (Monthly Receivables Intelligence)
+
+Dựa trên biểu mẫu thực tế của doanh nghiệp (`Bảng tổng hợp công nợ phải thu`), hệ thống cung cấp các công cụ trực quan hóa chuyên sâu:
+
+### 6.1. Logic Tổng Hợp Ma Trận 12 Tháng (`calculateMonthlyReceivablesMatrix`)
+- Quét và tổng hợp doanh số nợ phát sinh theo 12 tháng (Tháng 1 -> Tháng 12) của năm được chọn.
+- Phân tích chi tiết từng đối tác khách hàng: Phát sinh theo tháng, Tổng nợ trong năm, Đã thu về, Dư nợ còn lại, Tỷ lệ thu hồi nợ (%).
+- Tính toán tổng hợp toàn doanh nghiệp và xếp hạng Top 10 khách hàng có phát sinh nợ / dư nợ lớn nhất.
+
+### 6.2. Biểu Đồ Trực Quan Trên Dashboard
+- **Biểu đồ Cột & Đường 12 Tháng (Monthly Trend Chart)**: So sánh trực quan giữa Doanh số bán nợ mới vs Dòng tiền đã thu về vs Dư nợ gối đầu qua 12 tháng.
+- **Biểu đồ Thanh Ngang Top Khách Hàng (Top Debtors Breakdown)**: Phân rã cấu trúc nợ Đã thu vs Còn nợ của các đối tác trọng điểm.
+
+### 6.3. Bảng Ma Trận Công Nợ Excel-style
+- Bảng dữ liệu ma trận đa cột với cột Tên Khách Hàng được giữ cố định (sticky column) khi cuộn ngang.
+- Thanh tìm kiếm đối tác tức thời và dòng Tổng cộng toàn doanh nghiệp ở chân bảng.
+- Chức năng xuất Excel `exportMonthlyReceivablesMatrixToExcel` tạo file Excel chuẩn báo cáo năm của kế toán.
+
+
