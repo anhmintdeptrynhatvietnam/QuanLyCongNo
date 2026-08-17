@@ -328,6 +328,154 @@ class StateStore {
     return newInvoice;
   }
 
+  /**
+   * Kiểm tra xem số hóa đơn có bị trùng với hóa đơn nào trên hệ thống không
+   */
+  checkInvoiceDuplicate({ invoiceNumber, excludeId = null }) {
+    const cleanNum = (invoiceNumber || "").trim().toLowerCase();
+    if (!cleanNum) return { isDuplicate: false, matchedInvoice: null };
+
+    for (const inv of this.state.invoices) {
+      if (excludeId && inv.id === excludeId) continue;
+      if (inv.invoiceNumber && inv.invoiceNumber.trim().toLowerCase() === cleanNum) {
+        return {
+          isDuplicate: true,
+          matchedInvoice: inv,
+          message: `Số hóa đơn "${invoiceNumber}" đã tồn tại (${inv.partnerName} - ${inv.totalAmount} VNĐ).`
+        };
+      }
+    }
+
+    return { isDuplicate: false, matchedInvoice: null };
+  }
+
+  /**
+   * Thêm hàng loạt hóa đơn (Batch Import từ Excel) kèm tùy chọn xử lý trùng và tự tạo đối tác
+   * @param {Array<Object>} invoicesList
+   * @param {"SKIP"|"UPDATE"|"ALLOW"} duplicateMode
+   * @param {boolean} autoCreatePartners
+   * @returns {{ insertedCount: number, updatedCount: number, skippedCount: number, createdPartnersCount: number }}
+   */
+  addInvoicesBatch(invoicesList = [], duplicateMode = "SKIP", autoCreatePartners = true) {
+    const now = new Date().toISOString();
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let createdPartnersCount = 0;
+
+    // Cache để gom các đối tác mới được tạo tự động
+    const newPartnerMap = new Map();
+
+    invoicesList.forEach((invData, idx) => {
+      if (!invData.isValid) return;
+
+      // 1. Xử lý gắn đối tác / tạo đối tác mới nếu cần
+      let partnerId = invData.partnerId;
+      let partnerName = invData.partnerName || invData.partnerInput;
+
+      if ((!partnerId || invData.isNewPartner) && autoCreatePartners) {
+        const partnerKey = (invData.partnerInput || "").trim().toLowerCase();
+        if (newPartnerMap.has(partnerKey)) {
+          const cachedPartner = newPartnerMap.get(partnerKey);
+          partnerId = cachedPartner.id;
+          partnerName = cachedPartner.name;
+        } else {
+          // Kiểm tra xem đối tác đã có trong state chưa
+          const existing = this.state.partners.find(p => 
+            p.name.trim().toLowerCase() === partnerKey || 
+            (p.code && p.code.trim().toLowerCase() === partnerKey)
+          );
+          if (existing) {
+            partnerId = existing.id;
+            partnerName = existing.name;
+            newPartnerMap.set(partnerKey, existing);
+          } else {
+            // Tạo đối tác mới
+            const newPId = `P-${Date.now().toString(36).toUpperCase()}-${createdPartnersCount + 1}`;
+            const partnerType = invData.type === "PAYABLE" ? "VENDOR" : "CUSTOMER";
+            const createdPartner = {
+              id: newPId,
+              code: newPId,
+              name: invData.partnerInput.trim(),
+              type: partnerType,
+              taxCode: "",
+              phone: "",
+              address: "",
+              creditLimit: 0,
+              creditTermDays: 30,
+              totalReceivable: 0,
+              totalPayable: 0,
+              createdAt: now
+            };
+            this.state.partners.push(createdPartner);
+            newPartnerMap.set(partnerKey, createdPartner);
+            partnerId = newPId;
+            partnerName = createdPartner.name;
+            createdPartnersCount++;
+          }
+        }
+      }
+
+      // 2. Xử lý trùng lặp
+      if (invData.isDuplicate && duplicateMode === "SKIP") {
+        skippedCount++;
+        return;
+      }
+
+      if (invData.isDuplicate && duplicateMode === "UPDATE" && invData.matchedExistingInvoice) {
+        const existingIdx = this.state.invoices.findIndex(item => item.id === invData.matchedExistingInvoice.id);
+        if (existingIdx !== -1) {
+          const currentInv = this.state.invoices[existingIdx];
+          const updatedTotal = Number(invData.totalAmount) || currentInv.totalAmount;
+          const updatedPaid = invData.paidAmount !== undefined && invData.paidAmount !== null && invData.paidAmount > 0 
+            ? Number(invData.paidAmount) 
+            : currentInv.paidAmount;
+
+          this.state.invoices[existingIdx] = {
+            ...currentInv,
+            partnerId: partnerId || currentInv.partnerId,
+            partnerName: partnerName || currentInv.partnerName,
+            type: invData.type || currentInv.type,
+            itemName: invData.itemName || currentInv.itemName,
+            issueDate: invData.issueDate || currentInv.issueDate,
+            dueDate: invData.dueDate || currentInv.dueDate,
+            totalAmount: updatedTotal,
+            paidAmount: updatedPaid,
+            notes: invData.notes || currentInv.notes,
+            updatedAt: now
+          };
+          this.state.invoices[existingIdx].status = calculateInvoiceStatus(this.state.invoices[existingIdx]);
+          updatedCount++;
+        }
+        return;
+      }
+
+      // 3. Thêm mới hóa đơn
+      const id = invData.id || `INV-${Date.now().toString(36).toUpperCase()}-${idx + 1}`;
+      const newInvoice = {
+        id,
+        invoiceNumber: invData.invoiceNumber,
+        partnerId: partnerId || "",
+        partnerName: partnerName || invData.partnerInput || "Đối tác",
+        type: invData.type || "RECEIVABLE",
+        itemName: invData.itemName || "Hàng hóa / Dịch vụ",
+        issueDate: invData.issueDate,
+        dueDate: invData.dueDate,
+        totalAmount: Number(invData.totalAmount) || 0,
+        paidAmount: Number(invData.paidAmount) || 0,
+        notes: invData.notes || "",
+        createdAt: now
+      };
+      newInvoice.status = calculateInvoiceStatus(newInvoice);
+
+      this.state.invoices.unshift(newInvoice);
+      insertedCount++;
+    });
+
+    this.recomputeAndPersist();
+    return { insertedCount, updatedCount, skippedCount, createdPartnersCount };
+  }
+
   updateInvoice(id, updatedFields) {
     const index = this.state.invoices.findIndex(inv => inv.id === id);
     if (index !== -1) {

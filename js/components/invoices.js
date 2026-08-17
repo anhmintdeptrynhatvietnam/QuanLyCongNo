@@ -10,7 +10,7 @@ import { Toast } from './toast.js';
 import { ExportService } from '../services/export-service.js';
 import { formatCurrency, formatDate, renderInvoiceStatusBadge, toInputDateFormat, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
 import { INVOICE_TYPES, INVOICE_STATUS, PAYMENT_METHODS } from '../config.js';
-import { qs, qsa, escapeHtml } from '../utils/dom.js';
+import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
 
 export class InvoicesView extends BaseComponent {
   constructor(containerId) {
@@ -74,6 +74,10 @@ export class InvoicesView extends BaseComponent {
         </div>
 
         <div class="flex gap-2">
+          <button class="btn btn-secondary" id="btn-import-invoices-excel" title="Nhập hóa đơn / công nợ hàng loạt từ file Excel">
+            <i data-lucide="file-spreadsheet"></i>
+            <span>Nhập Từ Excel</span>
+          </button>
           <button class="btn btn-secondary" id="btn-export-invoices">
             <i data-lucide="download"></i>
             <span>Xuất Excel</span>
@@ -179,6 +183,12 @@ export class InvoicesView extends BaseComponent {
       };
     }
 
+    // Import Invoices from Excel
+    const importExcelBtn = qs("#btn-import-invoices-excel", this.container);
+    if (importExcelBtn) {
+      importExcelBtn.onclick = () => this.showImportExcelModal();
+    }
+
     // Export Excel
     const exportBtn = qs("#btn-export-invoices", this.container);
     if (exportBtn) {
@@ -224,6 +234,357 @@ export class InvoicesView extends BaseComponent {
           }
         }
       };
+    });
+  }
+
+  showImportExcelModal() {
+    let parsedResult = null;
+
+    const title = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="file-spreadsheet" style="color: var(--primary-600); width: 22px; height: 22px;"></i>
+        <span>Nhập Hóa Đơn Hàng Loạt Từ Excel (.xlsx / .csv)</span>
+      </div>
+    `;
+
+    const bodyHtml = `
+      <div class="excel-import-container">
+        <!-- Hướng dẫn 3 bước -->
+        <div class="excel-step-guide">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-title">Tải File Mẫu Chuẩn</div>
+              <div class="step-desc">Tải file mẫu Excel (.xlsx) với các cột dữ liệu hóa đơn chuẩn</div>
+            </div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-title">Điền Dữ Liệu Hóa Đơn</div>
+              <div class="step-desc">Nhập số HĐ, đối tác, số tiền, ngày lập, hạn nợ theo mẫu</div>
+            </div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-title">Kéo Thả & Xác Nhận</div>
+              <div class="step-desc">Hệ thống phân tích, kiểm tra trùng lặp và tự động đồng bộ công nợ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tải file mẫu -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: var(--space-3);">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-download-invoice-template">
+            <i data-lucide="download"></i>
+            <span>Tải File Excel Mẫu (.xlsx)</span>
+          </button>
+        </div>
+
+        <!-- Khung Kéo Thả File (Dropzone) -->
+        <input type="file" id="excel-invoice-file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+        <div class="excel-dropzone" id="excel-invoice-dropzone">
+          <div id="invoice-dropzone-content">
+            <i data-lucide="file-up" class="excel-dropzone-icon"></i>
+            <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
+            <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv (Tối đa 5.000 dòng)</div>
+          </div>
+        </div>
+
+        <!-- Khu vực Xem Trước Dữ Liệu (Preview Area) -->
+        <div id="excel-invoice-preview-area" style="display: none;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-modal-cancel">Hủy</button>
+      <button class="btn btn-primary" id="btn-confirm-import-invoices" disabled>
+        <i data-lucide="check"></i>
+        <span>Xác Nhận Nhập Hóa Đơn</span>
+      </button>
+    `;
+
+    Modal.open({
+      title,
+      bodyHtml,
+      footerHtml,
+      size: "xl",
+      onOpen: (body, footer) => {
+        const downloadBtn = qs("#btn-download-invoice-template", body);
+        const dropzone = qs("#excel-invoice-dropzone", body);
+        const dropzoneContent = qs("#invoice-dropzone-content", body);
+        const fileInput = qs("#excel-invoice-file-input", body);
+        const previewArea = qs("#excel-invoice-preview-area", body);
+        const confirmBtn = qs("#btn-confirm-import-invoices", footer);
+
+        // Download template
+        if (downloadBtn) {
+          downloadBtn.onclick = () => {
+            ExportService.generateInvoiceImportTemplate();
+            Toast.info("Đang tải file Excel mẫu hóa đơn...");
+          };
+        }
+
+        // Dropzone & File Input
+        if (dropzone && fileInput) {
+          dropzone.onclick = () => fileInput.click();
+
+          dropzone.ondragover = (e) => {
+            e.preventDefault();
+            dropzone.classList.add("dragover");
+          };
+
+          dropzone.ondragleave = () => {
+            dropzone.classList.remove("dragover");
+          };
+
+          dropzone.ondrop = (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("dragover");
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+              handleFile(files[0]);
+            }
+          };
+
+          fileInput.onchange = (e) => {
+            if (e.target.files.length > 0) {
+              handleFile(e.target.files[0]);
+              fileInput.value = "";
+            }
+          };
+        }
+
+        const handleFile = async (file) => {
+          try {
+            if (dropzoneContent) {
+              dropzoneContent.innerHTML = `<div style="font-size: 0.9rem; font-weight: 600; color: var(--primary-600);"><i data-lucide="loader-2"></i> Đang đọc file "${escapeHtml(file.name)}"...</div>`;
+              refreshLucideIcons();
+            }
+
+            parsedResult = await ExportService.parseInvoicesFromExcel(file, stateStore.state.invoices, stateStore.state.partners);
+            const { invoices, summary } = parsedResult;
+
+            if (summary.valid === 0) {
+              Toast.warning("Không tìm thấy dòng dữ liệu hóa đơn hợp lệ nào trong file!");
+            } else if (summary.dupCount > 0) {
+              Toast.info(`Đã đọc ${summary.total} dòng: phát hiện ${summary.dupCount} hóa đơn bị trùng lặp.`);
+            } else {
+              Toast.success(`Đã đọc ${summary.total} dòng (${summary.valid} hợp lệ, không có dòng trùng)!`);
+            }
+
+            // Render preview table
+            previewArea.style.display = "block";
+            previewArea.innerHTML = `
+              <!-- Thanh Thống Kê -->
+              <div class="stat-summary-bar">
+                <span class="stat-pill stat-pill-total">Tổng: <b>${summary.total}</b> dòng</span>
+                <span class="stat-pill stat-pill-new"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Mới: <b>${summary.newCount}</b></span>
+                ${summary.dupCount > 0 ? `
+                  <span class="stat-pill stat-pill-dup"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Trùng: <b>${summary.dupCount}</b></span>
+                ` : ''}
+                ${summary.invalid > 0 ? `
+                  <span class="stat-pill stat-pill-err"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Lỗi: <b>${summary.invalid}</b></span>
+                ` : ''}
+                ${summary.newPartnerCount > 0 ? `
+                  <span class="stat-pill" style="background: rgba(59, 130, 246, 0.1); color: var(--primary-700);"><i data-lucide="user-plus" style="width: 12px; height: 12px;"></i> Đối tác mới: <b>${summary.newPartnerCount}</b></span>
+                ` : ''}
+              </div>
+
+              <!-- Tự động tạo đối tác mới -->
+              ${summary.newPartnerCount > 0 ? `
+                <div style="margin-top: var(--space-3); padding: var(--space-3) var(--space-4); background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-md); border: 1px solid rgba(59, 130, 246, 0.2);">
+                  <label style="display: flex; align-items: center; gap: 8px; font-size: 0.825rem; cursor: pointer; font-weight: 500; color: var(--text-main);">
+                    <input type="checkbox" id="cb-auto-create-partners" checked style="cursor: pointer;">
+                    <span>Tự động tạo mới <b>${summary.newPartnerCount} đối tác</b> vào danh bạ nếu chưa có trên hệ thống</span>
+                  </label>
+                </div>
+              ` : ''}
+
+              <!-- Tùy Chọn Xử Lý Trùng Lặp -->
+              ${summary.dupCount > 0 ? `
+                <div class="duplicate-options-box">
+                  <div style="font-weight: 600; font-size: 0.85rem; color: #b45309; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                    <span>Phát hiện ${summary.dupCount} hóa đơn bị trùng số chứng từ. Vui lòng chọn phương án:</span>
+                  </div>
+                  <div class="duplicate-radio-row">
+                    <label class="duplicate-radio-label">
+                      <input type="radio" name="dup-mode" value="SKIP" checked>
+                      <span>Bỏ qua dòng trùng (Chỉ thêm <b>${summary.newCount}</b> hóa đơn mới)</span>
+                    </label>
+                    <label class="duplicate-radio-label">
+                      <input type="radio" name="dup-mode" value="UPDATE">
+                      <span>Cập nhật đè thông tin hóa đơn đã có</span>
+                    </label>
+                    <label class="duplicate-radio-label">
+                      <input type="radio" name="dup-mode" value="ALLOW">
+                      <span>Vẫn thêm mới tất cả (${summary.valid} dòng)</span>
+                    </label>
+                  </div>
+                </div>
+              ` : ''}
+
+              <div class="excel-preview-box">
+                <div class="excel-preview-header">
+                  <div style="font-weight: 600; font-size: 0.85rem;">
+                    Bảng xem trước dữ liệu chi tiết
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    File: <b>${escapeHtml(file.name)}</b>
+                  </div>
+                </div>
+                <div class="excel-preview-table-wrapper">
+                  <table class="data-table" style="font-size: 0.8rem;">
+                    <thead>
+                      <tr>
+                        <th style="width: 45px;">Dòng</th>
+                        <th>Số Hóa Đơn</th>
+                        <th>Đối Tác</th>
+                        <th>Phân Loại</th>
+                        <th>Ngày Lập / Hạn Nợ</th>
+                        <th class="text-right">Tổng Tiền (VNĐ)</th>
+                        <th class="text-right">Đã Trả (VNĐ)</th>
+                        <th>Hàng Hóa / Ghi Chú</th>
+                        <th>Trạng Thái</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${invoices.map(inv => `
+                        <tr style="${!inv.isValid ? 'background: rgba(239, 68, 68, 0.05);' : (inv.isDuplicate ? 'background: rgba(245, 158, 11, 0.05);' : '')}">
+                          <td>${inv.rowIndex}</td>
+                          <td>
+                            <div class="font-mono" style="font-weight: 600; color: var(--primary-600);">${escapeHtml(inv.invoiceNumber || "(Trống)")}</div>
+                          </td>
+                          <td>
+                            <div style="font-weight: 600;">${escapeHtml(inv.partnerName || "(Trống)")}</div>
+                            ${inv.isNewPartner ? `
+                              <span class="badge" style="font-size: 0.65rem; background: rgba(59, 130, 246, 0.1); color: var(--primary-600); padding: 1px 4px;">Đối tác mới</span>
+                            ` : ''}
+                          </td>
+                          <td>
+                            <span class="badge ${inv.type === 'RECEIVABLE' ? 'badge-customer' : 'badge-vendor'}" style="font-size: 0.7rem;">
+                              ${inv.type === 'RECEIVABLE' ? 'Phải Thu' : 'Phải Trả'}
+                            </span>
+                          </td>
+                          <td>
+                            <div>${formatDate(inv.issueDate)}</div>
+                            <div class="font-mono" style="font-size: 0.7rem; color: var(--text-muted);">Hạn: ${formatDate(inv.dueDate)}</div>
+                          </td>
+                          <td class="text-right font-mono font-bold">${formatCurrency(inv.totalAmount)}</td>
+                          <td class="text-right font-mono text-success">${inv.paidAmount > 0 ? formatCurrency(inv.paidAmount) : "-"}</td>
+                          <td>
+                            <div style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(inv.itemName)}">
+                              ${escapeHtml(inv.itemName)}
+                            </div>
+                            ${inv.notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(inv.notes)}">${escapeHtml(inv.notes)}</div>` : ''}
+                          </td>
+                          <td>
+                            ${!inv.isValid ? `
+                              <span class="validation-tag-err" title="${escapeHtml(inv.error)}"><i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> ${escapeHtml(inv.error)}</span>
+                            ` : (inv.isDuplicate ? `
+                              <span class="validation-tag-dup" title="${escapeHtml(inv.duplicateReason)}"><i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Trùng lặp</span>
+                            ` : `
+                              <span class="validation-tag-ok"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Hợp lệ</span>
+                            `)}
+                          </td>
+                        </tr>
+                      `).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+
+            // Reset dropzone state
+            if (dropzoneContent) {
+              dropzoneContent.innerHTML = `
+                <i data-lucide="file-check" class="excel-dropzone-icon" style="color: var(--success-600);"></i>
+                <div class="excel-dropzone-title">Đã chọn: <b>${escapeHtml(file.name)}</b></div>
+                <div class="excel-dropzone-sub">Bấm vào đây để chọn lại file khác</div>
+              `;
+              refreshLucideIcons();
+            }
+
+            // Function to update confirm button text based on duplicate mode
+            const updateConfirmBtn = () => {
+              const selectedMode = qs("input[name='dup-mode']:checked", previewArea)?.value || "SKIP";
+              if (selectedMode === "SKIP") {
+                if (summary.newCount > 0) {
+                  confirmBtn.disabled = false;
+                  confirmBtn.innerHTML = `<i data-lucide="upload"></i><span>Nhập ${summary.newCount} Hóa Đơn Mới (Bỏ qua ${summary.dupCount} dòng trùng)</span>`;
+                } else {
+                  confirmBtn.disabled = true;
+                  confirmBtn.innerHTML = `<span>Tất cả dòng đều bị trùng lặp</span>`;
+                }
+              } else if (selectedMode === "UPDATE") {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i data-lucide="refresh-cw"></i><span>Cập Nhật ${summary.dupCount} & Nhập ${summary.newCount} Mới</span>`;
+              } else {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i data-lucide="upload"></i><span>Nhập Toàn Bộ ${summary.valid} Hóa Đơn</span>`;
+              }
+              refreshLucideIcons();
+            };
+
+            // Listen to duplicate mode radio change
+            qsa("input[name='dup-mode']", previewArea).forEach(radio => {
+              radio.onchange = updateConfirmBtn;
+            });
+
+            updateConfirmBtn();
+          } catch (err) {
+            Toast.error(err.message);
+            if (dropzoneContent) {
+              dropzoneContent.innerHTML = `
+                <i data-lucide="file-up" class="excel-dropzone-icon"></i>
+                <div class="excel-dropzone-title">Kéo thả file Excel vào đây hoặc <span style="color: var(--primary-600); text-decoration: underline;">chọn từ máy tính</span></div>
+                <div class="excel-dropzone-sub">Hỗ trợ định dạng .xlsx, .xls, .csv</div>
+              `;
+              refreshLucideIcons();
+            }
+          }
+        };
+
+        // Confirm import click
+        if (confirmBtn) {
+          confirmBtn.onclick = () => {
+            if (!parsedResult || !parsedResult.invoices) return;
+            const validInvoices = parsedResult.invoices.filter(i => i.isValid);
+            if (validInvoices.length === 0) {
+              Toast.warning("Không có hóa đơn hợp lệ nào để nhập!");
+              return;
+            }
+
+            const selectedMode = qs("input[name='dup-mode']:checked", previewArea)?.value || "SKIP";
+            const autoCreatePartners = qs("#cb-auto-create-partners", previewArea)?.checked !== false;
+
+            const result = stateStore.addInvoicesBatch(validInvoices, selectedMode, autoCreatePartners);
+
+            let msg = "";
+            if (result.insertedCount > 0 && result.updatedCount > 0) {
+              msg = `Đã thêm mới ${result.insertedCount} hóa đơn và cập nhật ${result.updatedCount} hóa đơn cũ!`;
+            } else if (result.insertedCount > 0) {
+              msg = `Đã nhập thành công ${result.insertedCount} hóa đơn vào hệ thống!`;
+              if (result.skippedCount > 0) msg += ` (Đã bỏ qua ${result.skippedCount} dòng trùng)`;
+            } else if (result.updatedCount > 0) {
+              msg = `Đã cập nhật thông tin cho ${result.updatedCount} hóa đơn!`;
+            } else {
+              msg = `Không có hóa đơn mới nào được thêm (Đã bỏ qua ${result.skippedCount} dòng trùng).`;
+            }
+
+            if (result.createdPartnersCount > 0) {
+              msg += ` Đã tự động tạo mới ${result.createdPartnersCount} đối tác.`;
+            }
+
+            Toast.success(msg);
+            Modal.close();
+          };
+        }
+      }
     });
   }
 

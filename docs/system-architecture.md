@@ -117,3 +117,22 @@ interface Payment {
    - Kế thừa từ `BaseComponent` trong `js/components/base-component.js`.
    - Định nghĩa phương thức `render(state)` và `afterRender(state)`.
    - Đăng ký vào bảng điều hướng `App.views` trong `js/app.js`.
+
+---
+
+## 5. Cơ Chế Nhập Dữ Liệu Hàng Loạt Từ Excel (Batch Import Engine)
+
+Hệ thống hỗ trợ nhập dữ liệu hàng loạt từ các định dạng `.xlsx`, `.xls`, `.csv` sử dụng thư viện **SheetJS**:
+
+### 5.1. Nhập Danh Bạ Đối Tác (`ExportService.parsePartnersFromExcel`)
+- Nhận diện cột linh hoạt không phân biệt dấu và chữ hoa/thường.
+- Kiểm tra trùng lặp thông minh theo Mã Đối Tác, Mã Số Thuế và Tên Đối Tác.
+- Hỗ trợ 3 chế độ giải quyết trùng lặp: `SKIP` (Bỏ qua), `UPDATE` (Cập nhật đè), `ALLOW` (Thêm tất cả).
+
+### 5.2. Nhập Hóa Đơn & Nợ Phát Sinh (`ExportService.parseInvoicesFromExcel`)
+- Tự động nhận diện định dạng ngày tháng (Excel Serial Date, `DD/MM/YYYY`, `YYYY-MM-DD`).
+- Tự động tính hạn nợ nếu để trống dựa trên kỳ hạn công nợ của đối tác liên kết.
+- Tự động khớp đối tác đã có trong hệ thống và cho phép **tự động tạo mới đối tác** vào danh bạ nếu chưa tồn tại.
+- Kiểm tra trùng lặp số hóa đơn trên hệ thống và trong nội bộ file Excel.
+- Tự động kích hoạt `recalculatePartnerBalances` để cập nhật tức thời dư nợ 2 chiều và báo cáo tuổi nợ sau khi nhập.
+

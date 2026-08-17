@@ -391,4 +391,472 @@ export class ExportService {
       reader.readAsArrayBuffer(file);
     });
   }
+
+  /**
+   * Tạo và tải file Excel mẫu chuẩn (.xlsx) để nhập danh sách Hóa đơn / Chứng từ nợ
+   */
+  static generateInvoiceImportTemplate() {
+    if (!window.XLSX) {
+      alert("Thư viện SheetJS chưa được tải!");
+      return;
+    }
+
+    const todayStr = toInputDateFormat(new Date());
+    const dueDateStr = toInputDateFormat(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+
+    const templateRows = [
+      {
+        "Số Hóa Đơn (*)": "HD-2026-001",
+        "Tên / Mã Đối Tác (*)": "Công ty Cổ phần Sữa Việt Nam (Vinamilk)",
+        "Phân Loại (*)": "Phải Thu (Bán Hàng)",
+        "Hàng Hóa / Dịch Vụ": "Cung cấp giải pháp phần mềm Quản lý Tài chính đợt 1",
+        "Ngày Phát Sinh (*)": todayStr,
+        "Hạn Thanh Toán": dueDateStr,
+        "Tổng Tiền (VNĐ) (*)": 120000000,
+        "Đã Thanh Toán (VNĐ)": 40000000,
+        "Ghi Chú": "Hợp đồng số 12/2026/HĐ-FIS"
+      },
+      {
+        "Số Hóa Đơn (*)": "HD-2026-002",
+        "Tên / Mã Đối Tác (*)": "Tổng Công ty Công nghệ & Giải pháp CMC",
+        "Phân Loại (*)": "Phải Trả (Mua Hàng)",
+        "Hàng Hóa / Dịch Vụ": "Thuê hạ tầng máy chủ Cloud Server quý 3/2026",
+        "Ngày Phát Sinh (*)": todayStr,
+        "Hạn Thanh Toán": dueDateStr,
+        "Tổng Tiền (VNĐ) (*)": 45000000,
+        "Đã Thanh Toán (VNĐ)": 0,
+        "Ghi Chú": "Hóa đơn VAT điện tử số 00341"
+      },
+      {
+        "Số Hóa Đơn (*)": "HD-2026-003",
+        "Tên / Mã Đối Tác (*)": "Công ty TNHH Giải Pháp Công Nghệ Mới",
+        "Phân Loại (*)": "Phải Thu (Bán Hàng)",
+        "Hàng Hóa / Dịch Vụ": "Tư vấn & chuyển giao công nghệ phân tích dữ liệu",
+        "Ngày Phát Sinh (*)": todayStr,
+        "Hạn Thanh Toán": "",
+        "Tổng Tiền (VNĐ) (*)": 85000000,
+        "Đã Thanh Toán (VNĐ)": 0,
+        "Ghi Chú": "Đối tác mới - để trống hạn TT sẽ tự tính 30 ngày"
+      }
+    ];
+
+    const worksheet = window.XLSX.utils.json_to_sheet(templateRows);
+
+    // Cài đặt độ rộng cột chuẩn
+    worksheet["!cols"] = [
+      { wch: 18 }, // Số Hóa Đơn
+      { wch: 42 }, // Tên / Mã Đối Tác
+      { wch: 22 }, // Phân Loại
+      { wch: 45 }, // Hàng Hóa / Dịch Vụ
+      { wch: 18 }, // Ngày Phát Sinh
+      { wch: 18 }, // Hạn Thanh Toán
+      { wch: 22 }, // Tổng Tiền (VNĐ)
+      { wch: 22 }, // Đã Thanh Toán (VNĐ)
+      { wch: 35 }  // Ghi Chú
+    ];
+
+    const workbook = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(workbook, worksheet, "Mau_Nhap_Hoa_Don");
+    window.XLSX.writeFile(workbook, "Mau_Nhap_Danh_Sach_Hoa_Don.xlsx");
+  }
+
+  /**
+   * Đọc và chuẩn hóa danh sách Hóa đơn từ file Excel kèm kiểm tra trùng lặp và đối tác
+   * @param {File} file
+   * @param {Array} existingInvoices Danh sách hóa đơn hiện có
+   * @param {Array} existingPartners Danh sách đối tác hiện có
+   * @returns {Promise<{ invoices: Array, summary: Object }>}
+   */
+  static parseInvoicesFromExcel(file, existingInvoices = [], existingPartners = []) {
+    return new Promise((resolve, reject) => {
+      if (!window.XLSX) {
+        reject(new Error("Thư viện SheetJS chưa được nạp."));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = window.XLSX.read(data, { type: "array" });
+
+          const firstSheetName = workbook.SheetNames[0];
+          if (!firstSheetName) {
+            reject(new Error("File Excel không chứa bảng dữ liệu hợp lệ."));
+            return;
+          }
+
+          const rawRows = window.XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { defval: "" });
+          if (!rawRows || rawRows.length === 0) {
+            reject(new Error("File Excel không có dòng dữ liệu nào!"));
+            return;
+          }
+
+          const removeVietnameseTones = (str) => {
+            str = String(str || "");
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+            str = str.replace(/đ|Đ/g, "d");
+            str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "a");
+            str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "e");
+            str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "i");
+            str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "o");
+            str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "u");
+            str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "y");
+            str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return str.toLowerCase().replace(/[^a-z0-9]/g, "");
+          };
+
+          const parseDateString = (val, fallbackDate = new Date()) => {
+            if (!val) return toInputDateFormat(fallbackDate);
+            if (val instanceof Date && !isNaN(val.getTime())) {
+              return toInputDateFormat(val);
+            }
+            if (typeof val === "number") {
+              // Xử lý Excel serial date number
+              const d = new Date((val - 25569) * 86400 * 1000);
+              if (!isNaN(d.getTime())) return toInputDateFormat(d);
+            }
+            const str = String(val).trim();
+            // Định dạng DD/MM/YYYY hoặc DD-MM-YYYY hoặc DD.MM.YYYY
+            const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+            if (dmyMatch) {
+              const day = dmyMatch[1].padStart(2, "0");
+              const month = dmyMatch[2].padStart(2, "0");
+              const year = dmyMatch[3];
+              return `${year}-${month}-${day}`;
+            }
+            // Định dạng YYYY-MM-DD hoặc YYYY/MM/DD
+            const ymdMatch = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+            if (ymdMatch) {
+              const year = ymdMatch[1];
+              const month = ymdMatch[2].padStart(2, "0");
+              const day = ymdMatch[3].padStart(2, "0");
+              return `${year}-${month}-${day}`;
+            }
+            const d = new Date(str);
+            if (!isNaN(d.getTime())) return toInputDateFormat(d);
+            return toInputDateFormat(fallbackDate);
+          };
+
+          const invoices = [];
+          const seenInFileInvoiceNumbers = new Set();
+
+          let validCount = 0;
+          let dupCount = 0;
+          let newCount = 0;
+          let invalidCount = 0;
+          let newPartnerCount = 0;
+
+          const seenNewPartnerNames = new Set();
+
+          rawRows.forEach((row, idx) => {
+            let rawInvoiceNumber = "";
+            let rawPartnerInput = "";
+            let rawType = "";
+            let rawItemName = "";
+            let rawIssueDateVal = null;
+            let rawDueDateVal = null;
+            let rawTotalAmount = 0;
+            let rawPaidAmount = 0;
+            let rawNotes = "";
+
+            for (const [colName, colVal] of Object.entries(row)) {
+              const cleanKey = removeVietnameseTones(colName);
+              const strVal = String(colVal).trim();
+
+              // Số hóa đơn
+              if (
+                cleanKey.includes("sohoadon") ||
+                cleanKey.includes("mahoadon") ||
+                cleanKey.includes("sohd") ||
+                cleanKey.includes("invoicenumber") ||
+                cleanKey.includes("invoiceno") ||
+                cleanKey === "so" ||
+                cleanKey === "shd" ||
+                cleanKey === "hd"
+              ) {
+                rawInvoiceNumber = strVal;
+              }
+              // Đối tác (Tên hoặc Mã)
+              else if (
+                cleanKey.includes("tendoitac") ||
+                cleanKey.includes("madoitac") ||
+                cleanKey.includes("doitac") ||
+                cleanKey.includes("khachhang") ||
+                cleanKey.includes("nhacungcap") ||
+                cleanKey.includes("tenkh") ||
+                cleanKey.includes("tenncc") ||
+                cleanKey.includes("partner") ||
+                cleanKey.includes("customer") ||
+                cleanKey.includes("vendor")
+              ) {
+                rawPartnerInput = strVal;
+              }
+              // Phân loại (Phải thu / Phải trả)
+              else if (
+                cleanKey.includes("phanloai") ||
+                cleanKey.includes("loai") ||
+                cleanKey.includes("type") ||
+                cleanKey.includes("loaichunghung") ||
+                cleanKey.includes("loaihoadon")
+              ) {
+                const typeStr = removeVietnameseTones(strVal);
+                if (
+                  typeStr.includes("phaitra") ||
+                  typeStr.includes("muahang") ||
+                  typeStr.includes("ncc") ||
+                  typeStr.includes("nhacungcap") ||
+                  typeStr.includes("vendor") ||
+                  typeStr.includes("payable") ||
+                  typeStr.includes("chi")
+                ) {
+                  rawType = "PAYABLE";
+                } else if (
+                  typeStr.includes("phaithu") ||
+                  typeStr.includes("banhang") ||
+                  typeStr.includes("khachhang") ||
+                  typeStr.includes("customer") ||
+                  typeStr.includes("receivable") ||
+                  typeStr.includes("thu")
+                ) {
+                  rawType = "RECEIVABLE";
+                }
+              }
+              // Hàng hóa / Dịch vụ
+              else if (
+                cleanKey.includes("hanghoa") ||
+                cleanKey.includes("dichvu") ||
+                cleanKey.includes("tenhang") ||
+                cleanKey.includes("noidung") ||
+                cleanKey.includes("itemname") ||
+                cleanKey.includes("description") ||
+                cleanKey.includes("diengiai") ||
+                cleanKey.includes("sanpham")
+              ) {
+                rawItemName = strVal;
+              }
+              // Ngày phát sinh
+              else if (
+                cleanKey.includes("ngayphatsinh") ||
+                cleanKey.includes("ngayhoadon") ||
+                cleanKey.includes("ngaylap") ||
+                cleanKey.includes("ngaychungtu") ||
+                cleanKey.includes("issuedate") ||
+                (cleanKey.includes("ngay") && !cleanKey.includes("han") && !cleanKey.includes("hethan"))
+              ) {
+                rawIssueDateVal = colVal;
+              }
+              // Hạn thanh toán
+              else if (
+                cleanKey.includes("hanthanhtoan") ||
+                cleanKey.includes("hanno") ||
+                cleanKey.includes("ngayhethan") ||
+                cleanKey.includes("duedate") ||
+                cleanKey.includes("han")
+              ) {
+                rawDueDateVal = colVal;
+              }
+              // Tổng tiền
+              else if (
+                cleanKey.includes("tongtien") ||
+                cleanKey.includes("thanhtien") ||
+                cleanKey.includes("tientruocthue") ||
+                cleanKey.includes("tientong") ||
+                cleanKey.includes("sotien") ||
+                cleanKey.includes("totalamount") ||
+                cleanKey.includes("amount") ||
+                cleanKey === "tien"
+              ) {
+                const numStr = String(colVal).replace(/[^\d]/g, "");
+                rawTotalAmount = parseInt(numStr, 10) || 0;
+              }
+              // Đã thanh toán
+              else if (
+                cleanKey.includes("dathanhtoan") ||
+                cleanKey.includes("datra") ||
+                cleanKey.includes("datt") ||
+                cleanKey.includes("tiendatra") ||
+                cleanKey.includes("paidamount")
+              ) {
+                const numStr = String(colVal).replace(/[^\d]/g, "");
+                rawPaidAmount = parseInt(numStr, 10) || 0;
+              }
+              // Ghi chú
+              else if (
+                cleanKey.includes("ghichu") ||
+                cleanKey.includes("notes") ||
+                cleanKey.includes("note") ||
+                cleanKey.includes("comment")
+              ) {
+                rawNotes = strVal;
+              }
+            }
+
+            // Khớp nối đối tác
+            let matchedPartner = null;
+            let partnerName = rawPartnerInput;
+            let partnerId = "";
+            let isNewPartner = false;
+
+            if (rawPartnerInput) {
+              const cleanInput = removeVietnameseTones(rawPartnerInput);
+              const cleanRaw = rawPartnerInput.trim().toLowerCase();
+
+              // 1. Khớp theo mã đối tác
+              matchedPartner = existingPartners.find(p => p.code && p.code.trim().toLowerCase() === cleanRaw);
+
+              // 2. Khớp theo mã số thuế
+              if (!matchedPartner) {
+                const rawTax = rawPartnerInput.replace(/[^\d]/g, "");
+                if (rawTax.length >= 8) {
+                  matchedPartner = existingPartners.find(p => p.taxCode && p.taxCode.replace(/[^\d]/g, "") === rawTax);
+                }
+              }
+
+              // 3. Khớp theo tên đối tác
+              if (!matchedPartner) {
+                matchedPartner = existingPartners.find(p => removeVietnameseTones(p.name) === cleanInput);
+              }
+
+              // 4. Khớp tương đối tên
+              if (!matchedPartner) {
+                matchedPartner = existingPartners.find(p => {
+                  const pClean = removeVietnameseTones(p.name);
+                  return pClean.includes(cleanInput) || cleanInput.includes(pClean);
+                });
+              }
+
+              if (matchedPartner) {
+                partnerId = matchedPartner.id;
+                partnerName = matchedPartner.name;
+                // Nếu chưa có phân loại hóa đơn, tự động nhận theo phân loại đối tác
+                if (!rawType) {
+                  rawType = matchedPartner.type === "VENDOR" ? "PAYABLE" : "RECEIVABLE";
+                }
+              } else {
+                isNewPartner = true;
+                if (!seenNewPartnerNames.has(cleanInput)) {
+                  seenNewPartnerNames.add(cleanInput);
+                  newPartnerCount++;
+                }
+                if (!rawType) {
+                  rawType = "RECEIVABLE";
+                }
+              }
+            } else {
+              if (!rawType) rawType = "RECEIVABLE";
+            }
+
+            // Xử lý ngày tháng
+            const issueDate = parseDateString(rawIssueDateVal, new Date());
+            let dueDate = "";
+            if (rawDueDateVal) {
+              dueDate = parseDateString(rawDueDateVal, new Date(issueDate));
+            } else {
+              // Tự tính hạn nợ dựa theo hạn nợ đối tác hoặc mặc định 30 ngày
+              const termDays = matchedPartner ? (matchedPartner.creditTermDays || 30) : 30;
+              const issueD = new Date(issueDate);
+              const dueD = new Date(issueD.getTime() + termDays * 24 * 60 * 60 * 1000);
+              dueDate = toInputDateFormat(dueD);
+            }
+
+            // Tự sinh số hóa đơn nếu trống
+            if (!rawInvoiceNumber && rawPartnerInput && rawTotalAmount > 0) {
+              rawInvoiceNumber = `HD-${Date.now().toString(36).toUpperCase()}-${idx + 1}`;
+            }
+
+            // Kiểm tra tính hợp lệ
+            const hasInvoiceNumber = rawInvoiceNumber.trim().length > 0;
+            const hasPartner = rawPartnerInput.trim().length > 0;
+            const hasAmount = rawTotalAmount > 0;
+            const isValid = hasInvoiceNumber && hasPartner && hasAmount;
+
+            let error = "";
+            if (!hasInvoiceNumber) error = "Thiếu số hóa đơn";
+            else if (!hasPartner) error = "Thiếu tên/mã đối tác";
+            else if (!hasAmount) error = "Tổng tiền phải lớn hơn 0";
+
+            // Kiểm tra trùng lặp số hóa đơn
+            let isDuplicate = false;
+            let duplicateReason = "";
+            let matchedExistingInvoice = null;
+
+            if (isValid) {
+              const cleanInvNum = rawInvoiceNumber.trim().toLowerCase();
+
+              // 1. Trùng với hóa đơn đã có trên hệ thống
+              matchedExistingInvoice = existingInvoices.find(inv =>
+                inv.invoiceNumber && inv.invoiceNumber.trim().toLowerCase() === cleanInvNum
+              );
+
+              if (matchedExistingInvoice) {
+                isDuplicate = true;
+                duplicateReason = `Trùng số hóa đơn "${rawInvoiceNumber}" đã có trên hệ thống (${matchedExistingInvoice.partnerName} - ${formatCurrency(matchedExistingInvoice.totalAmount)})`;
+              }
+
+              // 2. Trùng với dòng trước trong chính file Excel này
+              if (!isDuplicate && seenInFileInvoiceNumbers.has(cleanInvNum)) {
+                isDuplicate = true;
+                duplicateReason = `Trùng số hóa đơn "${rawInvoiceNumber}" với dòng trước trong file Excel`;
+              }
+
+              if (cleanInvNum) {
+                seenInFileInvoiceNumbers.add(cleanInvNum);
+              }
+
+              validCount++;
+              if (isDuplicate) dupCount++; else newCount++;
+            } else {
+              invalidCount++;
+            }
+
+            invoices.push({
+              rowIndex: idx + 2,
+              invoiceNumber: rawInvoiceNumber,
+              partnerInput: rawPartnerInput,
+              partnerName: partnerName || rawPartnerInput,
+              partnerId: partnerId,
+              isNewPartner,
+              matchedPartner,
+              type: rawType || "RECEIVABLE",
+              itemName: rawItemName || "Hàng hóa / Dịch vụ",
+              issueDate,
+              dueDate,
+              totalAmount: rawTotalAmount,
+              paidAmount: Math.min(rawPaidAmount, rawTotalAmount),
+              notes: rawNotes,
+              isValid,
+              isDuplicate,
+              duplicateReason,
+              matchedExistingInvoice,
+              error
+            });
+          });
+
+          resolve({
+            invoices,
+            summary: {
+              total: rawRows.length,
+              valid: validCount,
+              newCount,
+              dupCount,
+              invalid: invalidCount,
+              newPartnerCount
+            }
+          });
+        } catch (err) {
+          reject(new Error("Lỗi khi đọc file Excel: " + err.message));
+        }
+      };
+
+      reader.onerror = () => reject(new Error("Không thể đọc file!"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
 }
+
