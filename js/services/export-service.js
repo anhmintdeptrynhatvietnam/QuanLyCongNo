@@ -25,9 +25,12 @@ export class ExportService {
       "Loại": inv.type === "RECEIVABLE" ? "Phải Thu" : "Phải Trả",
       "Ngày Phát Sinh": formatDate(inv.issueDate),
       "Hạn Thanh Toán": formatDate(inv.dueDate),
+      "Tiền Chưa Thuế (VNĐ)": inv.preTaxAmount || (inv.totalAmount - (inv.taxAmount || 0)),
+      "Tiền Thuế VAT (VNĐ)": inv.taxAmount || 0,
       "Tổng Tiền (VNĐ)": inv.totalAmount,
       "Đã Thanh Toán (VNĐ)": inv.paidAmount,
       "Còn Nợ (VNĐ)": Math.max(0, inv.totalAmount - inv.paidAmount),
+      "Hình Thức": inv.paymentMethod === "CASH" ? "Tiền mặt" : "Chuyển khoản",
       "Trạng Thái": inv.status,
       "Ghi Chú": inv.notes || ""
     }));
@@ -412,8 +415,11 @@ export class ExportService {
         "Hàng Hóa / Dịch Vụ": "Cung cấp giải pháp phần mềm Quản lý Tài chính đợt 1",
         "Ngày Phát Sinh (*)": todayStr,
         "Hạn Thanh Toán": dueDateStr,
-        "Tổng Tiền (VNĐ) (*)": 120000000,
+        "Tiền Chưa Thuế (VNĐ)": 100000000,
+        "Tiền Thuế VAT (VNĐ)": 10000000,
+        "Tổng Tiền (VNĐ) (*)": 110000000,
         "Đã Thanh Toán (VNĐ)": 40000000,
+        "Hình Thức Thanh Toán (*)": "Chuyển khoản",
         "Ghi Chú": "Hợp đồng số 12/2026/HĐ-FIS"
       },
       {
@@ -423,20 +429,26 @@ export class ExportService {
         "Hàng Hóa / Dịch Vụ": "Thuê hạ tầng máy chủ Cloud Server quý 3/2026",
         "Ngày Phát Sinh (*)": todayStr,
         "Hạn Thanh Toán": dueDateStr,
+        "Tiền Chưa Thuế (VNĐ)": 40909091,
+        "Tiền Thuế VAT (VNĐ)": 4090909,
         "Tổng Tiền (VNĐ) (*)": 45000000,
         "Đã Thanh Toán (VNĐ)": 0,
+        "Hình Thức Thanh Toán (*)": "Chuyển khoản",
         "Ghi Chú": "Hóa đơn VAT điện tử số 00341"
       },
       {
         "Số Hóa Đơn (*)": "HD-2026-003",
-        "Tên / Mã Đối Tác (*)": "Công ty TNHH Giải Pháp Công Nghệ Mới",
-        "Phân Loại (*)": "Phải Thu (Bán Hàng)",
-        "Hàng Hóa / Dịch Vụ": "Tư vấn & chuyển giao công nghệ phân tích dữ liệu",
+        "Tên / Mã Đối Tác (*)": "Công ty TNHH Văn Phòng Phẩm Minh Anh",
+        "Phân Loại (*)": "Phải Trả (Mua Hàng)",
+        "Hàng Hóa / Dịch Vụ": "Mua văn phòng phẩm và vật tư nhỏ lẻ",
         "Ngày Phát Sinh (*)": todayStr,
         "Hạn Thanh Toán": "",
-        "Tổng Tiền (VNĐ) (*)": 85000000,
-        "Đã Thanh Toán (VNĐ)": 0,
-        "Ghi Chú": "Đối tác mới - để trống hạn TT sẽ tự tính 30 ngày"
+        "Tiền Chưa Thuế (VNĐ)": 2000000,
+        "Tiền Thuế VAT (VNĐ)": 200000,
+        "Tổng Tiền (VNĐ) (*)": 2200000,
+        "Đã Thanh Toán (VNĐ)": 2200000,
+        "Hình Thức Thanh Toán (*)": "Tiền mặt",
+        "Ghi Chú": "Dưới 5 triệu được thanh toán tiền mặt"
       }
     ];
 
@@ -450,8 +462,11 @@ export class ExportService {
       { wch: 45 }, // Hàng Hóa / Dịch Vụ
       { wch: 18 }, // Ngày Phát Sinh
       { wch: 18 }, // Hạn Thanh Toán
-      { wch: 22 }, // Tổng Tiền (VNĐ)
-      { wch: 22 }, // Đã Thanh Toán (VNĐ)
+      { wch: 20 }, // Tiền Chưa Thuế
+      { wch: 18 }, // Tiền Thuế VAT
+      { wch: 22 }, // Tổng Tiền
+      { wch: 22 }, // Đã Thanh Toán
+      { wch: 24 }, // Hình Thức Thanh Toán
       { wch: 35 }  // Ghi Chú
     ];
 
@@ -561,8 +576,11 @@ export class ExportService {
             let rawItemName = "";
             let rawIssueDateVal = null;
             let rawDueDateVal = null;
+            let rawPreTaxAmount = 0;
+            let rawTaxAmount = 0;
             let rawTotalAmount = 0;
             let rawPaidAmount = 0;
+            let rawPaymentMethod = "BANK_TRANSFER"; // default: Chuyển khoản
             let rawNotes = "";
 
             for (const [colName, colVal] of Object.entries(row)) {
@@ -627,6 +645,22 @@ export class ExportService {
                   rawType = "RECEIVABLE";
                 }
               }
+              // Hình thức thanh toán
+              else if (
+                cleanKey.includes("hinhthucthanhtoan") ||
+                cleanKey.includes("hinhthuc") ||
+                cleanKey.includes("phuongthuc") ||
+                cleanKey.includes("paymentmethod") ||
+                cleanKey.includes("method") ||
+                cleanKey.includes("hinhthuctt")
+              ) {
+                const methStr = removeVietnameseTones(strVal);
+                if (methStr.includes("tienmat") || methStr.includes("cash") || methStr.includes("tm")) {
+                  rawPaymentMethod = "CASH";
+                } else {
+                  rawPaymentMethod = "BANK_TRANSFER";
+                }
+              }
               // Đã thanh toán (Kiểm tra trước để tránh nhầm với hạn thanh toán hoặc tiền)
               else if (
                 cleanKey.includes("dathanhtoan") ||
@@ -638,6 +672,29 @@ export class ExportService {
               ) {
                 const numStr = String(colVal).replace(/[^\d]/g, "");
                 rawPaidAmount = parseInt(numStr, 10) || 0;
+              }
+              // Tiền chưa thuế
+              else if (
+                cleanKey.includes("chuathue") ||
+                cleanKey.includes("tientruocthue") ||
+                cleanKey.includes("tienchuathue") ||
+                cleanKey.includes("subtotal") ||
+                cleanKey.includes("pretax")
+              ) {
+                const numStr = String(colVal).replace(/[^\d]/g, "");
+                rawPreTaxAmount = parseInt(numStr, 10) || 0;
+              }
+              // Tiền thuế VAT
+              else if (
+                cleanKey.includes("tienthue") ||
+                cleanKey.includes("thuevat") ||
+                cleanKey.includes("vatamount") ||
+                cleanKey.includes("taxamount") ||
+                cleanKey === "thue" ||
+                cleanKey === "vat"
+              ) {
+                const numStr = String(colVal).replace(/[^\d]/g, "");
+                rawTaxAmount = parseInt(numStr, 10) || 0;
               }
               // Hàng hóa / Dịch vụ
               else if (
@@ -679,7 +736,6 @@ export class ExportService {
               else if (
                 cleanKey.includes("tongtien") ||
                 cleanKey.includes("thanhtien") ||
-                cleanKey.includes("tientruocthue") ||
                 cleanKey.includes("tientong") ||
                 cleanKey.includes("sotien") ||
                 cleanKey.includes("totalamount") ||
@@ -698,6 +754,16 @@ export class ExportService {
               ) {
                 rawNotes = strVal;
               }
+            }
+
+            // Tính toán tổng tiền = Chưa thuế + Thuế nếu có
+            if (rawPreTaxAmount > 0 || rawTaxAmount > 0) {
+              if (rawTotalAmount === 0 || rawTotalAmount !== (rawPreTaxAmount + rawTaxAmount)) {
+                rawTotalAmount = rawPreTaxAmount + rawTaxAmount;
+              }
+            } else if (rawTotalAmount > 0 && rawPreTaxAmount === 0 && rawTaxAmount === 0) {
+              rawPreTaxAmount = rawTotalAmount;
+              rawTaxAmount = 0;
             }
 
             // Khớp nối đối tác
@@ -773,16 +839,21 @@ export class ExportService {
               rawInvoiceNumber = `HD-${Date.now().toString(36).toUpperCase()}-${idx + 1}`;
             }
 
-            // Kiểm tra tính hợp lệ
+            // Kiểm tra tính hợp lệ cơ bản
             const hasInvoiceNumber = rawInvoiceNumber.trim().length > 0;
             const hasPartner = rawPartnerInput.trim().length > 0;
             const hasAmount = rawTotalAmount > 0;
-            const isValid = hasInvoiceNumber && hasPartner && hasAmount;
+
+            // Quy tắc Validate Kế toán: Tiền mặt từ 5.000.000 VNĐ trở lên là không hợp lệ
+            const isCashOverLimit = rawPaymentMethod === "CASH" && (rawPaidAmount >= 5000000 || rawTotalAmount >= 5000000);
+
+            const isValid = hasInvoiceNumber && hasPartner && hasAmount && !isCashOverLimit;
 
             let error = "";
             if (!hasInvoiceNumber) error = "Thiếu số hóa đơn";
             else if (!hasPartner) error = "Thiếu tên/mã đối tác";
             else if (!hasAmount) error = "Tổng tiền phải lớn hơn 0";
+            else if (isCashOverLimit) error = "Hình thức Tiền mặt từ 5.000.000 VNĐ trở lên không hợp lệ (Bắt buộc Chuyển khoản qua Ngân hàng).";
 
             // Kiểm tra trùng lặp số hóa đơn
             let isDuplicate = false;
@@ -830,8 +901,11 @@ export class ExportService {
               itemName: rawItemName || "Hàng hóa / Dịch vụ",
               issueDate,
               dueDate,
+              preTaxAmount: rawPreTaxAmount,
+              taxAmount: rawTaxAmount,
               totalAmount: rawTotalAmount,
               paidAmount: Math.min(rawPaidAmount, rawTotalAmount),
+              paymentMethod: rawPaymentMethod,
               notes: rawNotes,
               isValid,
               isDuplicate,

@@ -257,6 +257,70 @@ async function runComprehensiveTests() {
     if (vinaRow.totalDebt !== (23421758 + 11634678)) throw new Error(`Tổng nợ sai: ${vinaRow.totalDebt}`);
   });
 
+  console.log("\n6. KIỂM THỬ NHẬP EXCEL HÓA ĐƠN & TỰ ĐỘNG SINH CHỨNG TỪ (UNT/UNC/PT/PC):");
+  test("Cộng dồn Chưa Thuế + Thuế VAT = Tổng Tiền", () => {
+    const invData = {
+      invoiceNumber: "HD-VAT-TEST-01",
+      partnerInput: "Công ty Kiểm Thử VAT",
+      preTaxAmount: 50000000,
+      taxAmount: 5000000,
+      totalAmount: 55000000,
+      paidAmount: 20000000,
+      paymentMethod: PAYMENT_METHODS.BANK_TRANSFER,
+      type: INVOICE_TYPES.RECEIVABLE,
+      isValid: true
+    };
+
+    const res = stateStore.addInvoicesBatch([invData], "ALLOW", true);
+    if (res.insertedCount !== 1) throw new Error(`Không thêm được hóa đơn: ${JSON.stringify(res)}`);
+    if (res.autoCreatedPaymentsCount !== 1) throw new Error(`Không tự động sinh chứng từ: ${JSON.stringify(res)}`);
+
+    const createdPayment = stateStore.state.payments[0];
+    if (createdPayment.voucherType !== VOUCHER_TYPES.RECEIPT_BANK) {
+      throw new Error(`Loại chứng từ sai: ${createdPayment.voucherType}`);
+    }
+    if (!createdPayment.paymentNumber.startsWith("UNT-")) {
+      throw new Error(`Tiền tố số chứng từ sai: ${createdPayment.paymentNumber}`);
+    }
+    if (createdPayment.amount !== 20000000) {
+      throw new Error(`Số tiền chứng từ tự sinh sai: ${createdPayment.amount}`);
+    }
+  });
+
+  test("Nhập hóa đơn chi mua hàng đã trả tiền mặt (< 5tr) -> Tự động sinh Phiếu Chi (PC)", () => {
+    const invData = {
+      invoiceNumber: "HD-PC-TEST-02",
+      partnerInput: "Cửa hàng Văn Phòng Phẩm",
+      preTaxAmount: 2000000,
+      taxAmount: 200000,
+      totalAmount: 2200000,
+      paidAmount: 2200000,
+      paymentMethod: PAYMENT_METHODS.CASH,
+      type: INVOICE_TYPES.PAYABLE,
+      isValid: true
+    };
+
+    const res = stateStore.addInvoicesBatch([invData], "ALLOW", true);
+    const createdPayment = stateStore.state.payments[0];
+    if (createdPayment.voucherType !== VOUCHER_TYPES.PAYMENT_CASH) {
+      throw new Error(`Loại chứng từ sai: ${createdPayment.voucherType}`);
+    }
+    if (!createdPayment.paymentNumber.startsWith("PC-")) {
+      throw new Error(`Tiền tố số chứng từ sai: ${createdPayment.paymentNumber}`);
+    }
+  });
+
+  test("Kiểm tra Kính gửi động trong Giấy Đề Nghị Thanh Toán", () => {
+    const prCustom = {
+      ...pr,
+      dearTo: "Ban Tổng Giám Đốc - Phòng Tài Chính Kế Hoạch"
+    };
+    const html = VoucherTemplates.renderPaymentRequestHTML(prCustom, settings, ncc, [inv]);
+    if (!html.includes("Ban Tổng Giám Đốc") || !html.includes("Phòng Tài Chính Kế Hoạch")) {
+      throw new Error("Kính gửi động chưa được render đúng trên bản in A4");
+    }
+  });
+
   console.log("\n=================================================");
   console.log(`🏁 TỔNG KẾT: ${passed}/${total} BÀI KIỂM THỬ ĐÃ PASS HOÀN TOÀN (100%)!`);
   console.log("=================================================\n");

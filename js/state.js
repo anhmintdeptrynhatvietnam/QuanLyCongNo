@@ -320,16 +320,51 @@ class StateStore {
 
   addInvoice(invoiceData) {
     const id = invoiceData.id || `INV-${Date.now().toString(36).toUpperCase()}`;
+    const preTax = Number(invoiceData.preTaxAmount) || (Number(invoiceData.totalAmount) - (Number(invoiceData.taxAmount) || 0));
+    const tax = Number(invoiceData.taxAmount) || 0;
+    const total = Number(invoiceData.totalAmount) || (preTax + tax);
+    const paid = Number(invoiceData.paidAmount) || 0;
+    const method = invoiceData.paymentMethod || "BANK_TRANSFER";
+
     const newInvoice = {
       ...invoiceData,
       id,
-      paidAmount: Number(invoiceData.paidAmount) || 0,
-      totalAmount: Number(invoiceData.totalAmount) || 0,
+      preTaxAmount: preTax,
+      taxAmount: tax,
+      totalAmount: total,
+      paidAmount: paid,
+      paymentMethod: method,
       createdAt: new Date().toISOString()
     };
     newInvoice.status = calculateInvoiceStatus(newInvoice);
 
     this.state.invoices.unshift(newInvoice);
+
+    // Nếu có thanh toán ngay lúc tạo hóa đơn -> Tự động sinh chứng từ thanh toán tương ứng
+    if (paid > 0) {
+      const isReceivable = newInvoice.type === "RECEIVABLE";
+      const vType = getVoucherType(isReceivable ? "RECEIPT" : "PAYMENT", method);
+      const prefix = VOUCHER_TYPE_PREFIXES[vType] || "CT";
+
+      const autoPayment = {
+        id: `PAY-${Date.now().toString(36).toUpperCase()}`,
+        paymentNumber: `${prefix}-${Date.now().toString().slice(-6)}`,
+        type: isReceivable ? "RECEIPT" : "PAYMENT",
+        paymentMethod: method,
+        voucherType: vType,
+        partnerId: newInvoice.partnerId,
+        partnerName: newInvoice.partnerName,
+        paymentDate: newInvoice.issueDate || new Date().toISOString().split("T")[0],
+        amount: paid,
+        notes: `Thanh toán khi lập Hóa đơn ${newInvoice.invoiceNumber}`,
+        allocations: [
+          { invoiceId: newInvoice.id, invoiceNumber: newInvoice.invoiceNumber, amount: paid }
+        ],
+        createdAt: new Date().toISOString()
+      };
+      this.state.payments.unshift(autoPayment);
+    }
+
     this.recomputeAndPersist();
     return newInvoice;
   }
@@ -360,7 +395,7 @@ class StateStore {
    * @param {Array<Object>} invoicesList
    * @param {"SKIP"|"UPDATE"|"ALLOW"} duplicateMode
    * @param {boolean} autoCreatePartners
-   * @returns {{ insertedCount: number, updatedCount: number, skippedCount: number, createdPartnersCount: number }}
+   * @returns {{ insertedCount: number, updatedCount: number, skippedCount: number, createdPartnersCount: number, autoCreatedPaymentsCount: number }}
    */
   addInvoicesBatch(invoicesList = [], duplicateMode = "SKIP", autoCreatePartners = true) {
     const now = new Date().toISOString();
@@ -368,6 +403,7 @@ class StateStore {
     let updatedCount = 0;
     let skippedCount = 0;
     let createdPartnersCount = 0;
+    let autoCreatedPaymentsCount = 0;
 
     // Cache để gom các đối tác mới được tạo tự động
     const newPartnerMap = new Map();
@@ -422,6 +458,12 @@ class StateStore {
         }
       }
 
+      const preTax = Number(invData.preTaxAmount) || (Number(invData.totalAmount) - (Number(invData.taxAmount) || 0));
+      const tax = Number(invData.taxAmount) || 0;
+      const total = Number(invData.totalAmount) || (preTax + tax);
+      const paid = Number(invData.paidAmount) || 0;
+      const method = invData.paymentMethod || "BANK_TRANSFER";
+
       // 2. Xử lý trùng lặp
       if (invData.isDuplicate && duplicateMode === "SKIP") {
         skippedCount++;
@@ -432,7 +474,7 @@ class StateStore {
         const existingIdx = this.state.invoices.findIndex(item => item.id === invData.matchedExistingInvoice.id);
         if (existingIdx !== -1) {
           const currentInv = this.state.invoices[existingIdx];
-          const updatedTotal = Number(invData.totalAmount) || currentInv.totalAmount;
+          const updatedTotal = total || currentInv.totalAmount;
           const updatedPaid = invData.paidAmount !== undefined && invData.paidAmount !== null && invData.paidAmount > 0 
             ? Number(invData.paidAmount) 
             : currentInv.paidAmount;
@@ -445,8 +487,11 @@ class StateStore {
             itemName: invData.itemName || currentInv.itemName,
             issueDate: invData.issueDate || currentInv.issueDate,
             dueDate: invData.dueDate || currentInv.dueDate,
+            preTaxAmount: preTax,
+            taxAmount: tax,
             totalAmount: updatedTotal,
             paidAmount: updatedPaid,
+            paymentMethod: method,
             notes: invData.notes || currentInv.notes,
             updatedAt: now
           };
@@ -467,8 +512,11 @@ class StateStore {
         itemName: invData.itemName || "Hàng hóa / Dịch vụ",
         issueDate: invData.issueDate,
         dueDate: invData.dueDate,
-        totalAmount: Number(invData.totalAmount) || 0,
-        paidAmount: Number(invData.paidAmount) || 0,
+        preTaxAmount: preTax,
+        taxAmount: tax,
+        totalAmount: total,
+        paidAmount: paid,
+        paymentMethod: method,
         notes: invData.notes || "",
         createdAt: now
       };
@@ -476,10 +524,37 @@ class StateStore {
 
       this.state.invoices.unshift(newInvoice);
       insertedCount++;
+
+      // 4. Tự động sinh chứng từ thanh toán (UNT / UNC / PT / PC) nếu có số tiền đã thanh toán
+      if (paid > 0) {
+        const isReceivable = newInvoice.type === "RECEIVABLE";
+        const vType = getVoucherType(isReceivable ? "RECEIPT" : "PAYMENT", method);
+        const prefix = VOUCHER_TYPE_PREFIXES[vType] || "CT";
+
+        const autoPayment = {
+          id: `PAY-${Date.now().toString(36).toUpperCase()}-${idx + 1}`,
+          paymentNumber: `${prefix}-${Date.now().toString().slice(-6)}${idx + 1}`,
+          type: isReceivable ? "RECEIPT" : "PAYMENT",
+          paymentMethod: method,
+          voucherType: vType,
+          partnerId: newInvoice.partnerId,
+          partnerName: newInvoice.partnerName,
+          paymentDate: newInvoice.issueDate || now.split("T")[0],
+          amount: paid,
+          notes: `Thanh toán tự động khi nhập Hóa đơn ${newInvoice.invoiceNumber}`,
+          allocations: [
+            { invoiceId: newInvoice.id, invoiceNumber: newInvoice.invoiceNumber, amount: paid }
+          ],
+          createdAt: now
+        };
+
+        this.state.payments.unshift(autoPayment);
+        autoCreatedPaymentsCount++;
+      }
     });
 
     this.recomputeAndPersist();
-    return { insertedCount, updatedCount, skippedCount, createdPartnersCount };
+    return { insertedCount, updatedCount, skippedCount, createdPartnersCount, autoCreatedPaymentsCount };
   }
 
   updateInvoice(id, updatedFields) {

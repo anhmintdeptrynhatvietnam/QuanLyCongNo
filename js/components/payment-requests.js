@@ -297,6 +297,18 @@ export class PaymentRequestsView extends BaseComponent {
           </div>
         </div>
 
+        <!-- Tùy Chọn Kính Gửi -->
+        <div class="form-group">
+          <label class="form-label">Kính Gửi (Cấp Phê Duyệt) <span class="required">*</span></label>
+          <input type="text" class="form-control font-bold" id="pr-dear-to" value="Ban Giám Đốc - Phòng Kế Toán - Tài Chính" placeholder="VD: Ban Giám Đốc, Phòng Kế Toán - Tài Chính, Ban TGĐ..." required>
+          <div class="flex gap-1" style="flex-wrap: wrap; margin-top: 4px;">
+            <button type="button" class="btn btn-secondary btn-xs btn-quick-dear" data-text="Ban Giám Đốc - Phòng Kế Toán - Tài Chính" style="padding: 2px 6px; font-size: 0.72rem;">Ban Giám Đốc & Kế Toán</button>
+            <button type="button" class="btn btn-secondary btn-xs btn-quick-dear" data-text="Ban Tổng Giám Đốc" style="padding: 2px 6px; font-size: 0.72rem;">Ban TGĐ</button>
+            <button type="button" class="btn btn-secondary btn-xs btn-quick-dear" data-text="Phòng Kế Toán - Tài Chính" style="padding: 2px 6px; font-size: 0.72rem;">Phòng Kế Toán</button>
+            <button type="button" class="btn btn-secondary btn-xs btn-quick-dear" data-text="Hội Đồng Quản Trị" style="padding: 2px 6px; font-size: 0.72rem;">HĐQT</button>
+          </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
           <div class="form-group">
             <label class="form-label">Người Đề Nghị <span class="required">*</span></label>
@@ -334,7 +346,7 @@ export class PaymentRequestsView extends BaseComponent {
           <div class="form-group">
             <label class="form-label">Số Tiền Đề Nghị Thanh Toán (VNĐ) <span class="required">*</span></label>
             <div class="input-group">
-              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="pr-amount" placeholder="0" required>
+              <input type="text" inputmode="numeric" class="form-control font-mono font-bold currency-input" id="pr-amount" placeholder="0" required style="color: var(--primary-700);">
               <span class="input-group-text">VNĐ</span>
             </div>
             <div class="currency-preview-text" id="pr-amount-preview"></div>
@@ -346,37 +358,43 @@ export class PaymentRequestsView extends BaseComponent {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Hình Thức Thanh Toán</label>
+          <label class="form-label">Hình Thức Thanh Toán <span class="required">*</span></label>
           <select class="form-select" id="pr-method">
-            <option value="${PAYMENT_METHODS.BANK_TRANSFER}">🏦 Chuyển khoản ngân hàng (Xuất Ủy Nhiệm Chi)</option>
-            <option value="${PAYMENT_METHODS.CASH}">💵 Tiền mặt (Xuất Phiếu Chi)</option>
+            <option value="${PAYMENT_METHODS.BANK_TRANSFER}">🏦 Chuyển khoản ngân hàng (Xuất Ủy Nhiệm Chi UNC)</option>
+            <option value="${PAYMENT_METHODS.CASH}">💵 Tiền mặt (Xuất Phiếu Chi PC - Chỉ áp dụng dưới 5 triệu)</option>
           </select>
+          <div style="font-size: 0.725rem; color: #b45309; margin-top: 3px;">
+            * Quy định kế toán: Thanh toán từ 5.000.000 VNĐ trở lên bắt buộc Chuyển khoản ngân hàng.
+          </div>
         </div>
 
-        <!-- Thông tin Ngân hàng Thụ Hưởng -->
-        <div id="pr-bank-fields" style="background: var(--bg-surface-subtle); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border: 1px solid var(--border-subtle);">
-          <div style="font-weight: 600; font-size: 0.825rem; margin-bottom: var(--space-2); color: var(--primary-700);">
-            Thông tin tài khoản nhận tiền của Đối tác:
+        <!-- Thông tin Ngân hàng Thụ Hưởng (Cố định theo đối tác) -->
+        <div id="pr-bank-fields" style="background: var(--bg-surface-subtle); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border: 1px solid var(--border-main);">
+          <div style="font-weight: 700; font-size: 0.825rem; margin-bottom: var(--space-2); color: var(--primary-700); display: flex; justify-content: space-between; align-items: center;">
+            <span>Tài Khoản Thụ Hưởng Của Nhà Cung Cấp</span>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #047857; font-size: 0.7rem; font-weight: 600;">
+              <i data-lucide="shield-check" style="width: 12px; height: 12px;"></i> Cố định theo Danh bạ NCC
+            </span>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-bottom: var(--space-2);">
             <div>
               <label style="font-size: 0.75rem; color: var(--text-muted);">Tên Ngân Hàng</label>
-              <input type="text" class="form-control form-control-sm" id="pr-bank-name" placeholder="VD: Vietcombank, BIDV...">
+              <input type="text" class="form-control form-control-sm" id="pr-bank-name" placeholder="VD: Vietcombank, BIDV..." style="background: #f8fafc; font-weight: 600;">
             </div>
             <div>
               <label style="font-size: 0.75rem; color: var(--text-muted);">Số Tài Khoản</label>
-              <input type="text" class="form-control form-control-sm font-mono" id="pr-bank-acc" placeholder="VD: 001100...">
+              <input type="text" class="form-control form-control-sm font-mono font-bold" id="pr-bank-acc" placeholder="VD: 001100..." style="background: #f8fafc; color: var(--primary-700);">
             </div>
           </div>
           <div>
             <label style="font-size: 0.75rem; color: var(--text-muted);">Tên Chủ Tài Khoản</label>
-            <input type="text" class="form-control form-control-sm" id="pr-bank-holder" placeholder="VD: CÔNG TY TNHH...">
+            <input type="text" class="form-control form-control-sm font-bold" id="pr-bank-holder" placeholder="VD: CÔNG TY TNHH..." style="background: #f8fafc;">
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Lý Do / Nội Dung Thanh Toán Chi Tiết <span class="required">*</span></label>
-          <textarea class="form-control" id="pr-reason" rows="2" placeholder="VD: Thanh toán tiền mua thiết bị và dịch vụ theo hóa đơn và hợp đồng"></textarea>
+          <textarea class="form-control" id="pr-reason" rows="2" placeholder="VD: Thanh toán tiền cước vận chuyển và dịch vụ theo hợp đồng và hóa đơn"></textarea>
         </div>
       </form>
     `;
@@ -400,8 +418,16 @@ export class PaymentRequestsView extends BaseComponent {
         const bankNameInput = qs("#pr-bank-name", body);
         const bankAccInput = qs("#pr-bank-acc", body);
         const bankHolderInput = qs("#pr-bank-holder", body);
+        const dearToInput = qs("#pr-dear-to", body);
 
-        // Hàm nạp hóa đơn theo đối tác
+        // Quick suggestions for "Kính gửi"
+        qsa(".btn-quick-dear", body).forEach(btn => {
+          btn.onclick = () => {
+            dearToInput.value = btn.dataset.text;
+          };
+        });
+
+        // Hàm nạp hóa đơn & cố định tài khoản thụ hưởng theo đối tác
         const loadPartnerInvoices = (pId) => {
           const partner = vendors.find(p => p.id === pId);
           if (partner) {
@@ -480,10 +506,19 @@ export class PaymentRequestsView extends BaseComponent {
             return;
           }
 
+          const paymentMethod = methodSelect.value;
+
+          // Validation quy tắc tiền mặt < 5.000.000 VNĐ
+          if (paymentMethod === PAYMENT_METHODS.CASH && amount >= 5000000) {
+            Toast.error("Thanh toán tiền mặt chỉ áp dụng cho số tiền dưới 5.000.000 VNĐ. Số tiền từ 5.000.000 VNĐ trở lên bắt buộc Chuyển khoản qua Ngân hàng!");
+            return;
+          }
+
           const selectedInvIds = Array.from(invListEl.querySelectorAll(".pr-inv-check:checked")).map(c => c.value);
 
           const requestData = {
             requestNumber: qs("#pr-number", body).value.trim(),
+            dearTo: dearToInput.value.trim() || "Ban Giám Đốc - Phòng Kế Toán - Tài Chính",
             partnerId,
             partnerName: partner ? partner.name : "",
             amount,
@@ -491,7 +526,7 @@ export class PaymentRequestsView extends BaseComponent {
             deadlineDate: qs("#pr-deadline", body).value,
             requesterName: qs("#pr-requester", body).value.trim(),
             department: qs("#pr-dept", body).value.trim(),
-            paymentMethod: methodSelect.value,
+            paymentMethod: paymentMethod,
             bankName: bankNameInput.value.trim(),
             bankAccount: bankAccInput.value.trim(),
             bankAccountHolder: bankHolderInput.value.trim(),
@@ -521,10 +556,17 @@ export class PaymentRequestsView extends BaseComponent {
   }
 
   /**
-   * Xác nhận duyệt & xuất Ủy Nhiệm Chi / Phiếu Chi
+   * Xác nhận Duyệt và Chuyển thành UNC / Phiếu Chi
    */
   confirmExecutePaymentRequest(req) {
     const isCash = req.paymentMethod === PAYMENT_METHODS.CASH;
+
+    // Validation tiền mặt >= 5 triệu khi duyệt
+    if (isCash && req.amount >= 5000000) {
+      Toast.error("Đề nghị thanh toán tiền mặt từ 5.000.000 VNĐ trở lên không hợp lệ, bắt buộc chuyển đổi sang Chuyển khoản ngân hàng!");
+      return;
+    }
+
     const actionName = isCash ? "Lập Phiếu Chi (Tiền mặt)" : "Lập Ủy Nhiệm Chi (Ngân hàng)";
     const todayStr = toInputDateFormat(new Date());
 

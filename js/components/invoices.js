@@ -99,9 +99,12 @@ export class InvoicesView extends BaseComponent {
                 <th>Khách Hàng / Nhà Cung Cấp</th>
                 <th>Ngày Phát Sinh</th>
                 <th>Hạn Thanh Toán</th>
+                <th class="text-right">Chưa Thuế</th>
+                <th class="text-right">Thuế VAT</th>
                 <th class="text-right">Tổng Tiền</th>
                 <th class="text-right">Đã Trả</th>
                 <th class="text-right">Còn Nợ</th>
+                <th class="text-center">Hình Thức</th>
                 <th>Trạng Thái</th>
                 <th class="text-center" style="width: 120px;">Thao Tác</th>
               </tr>
@@ -109,12 +112,16 @@ export class InvoicesView extends BaseComponent {
             <tbody>
               ${filteredInvoices.length === 0 ? `
                 <tr>
-                  <td colspan="9" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
+                  <td colspan="12" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
                     Không có hóa đơn nào trong danh sách.
                   </td>
                 </tr>
               ` : filteredInvoices.map(inv => {
+                const preTax = inv.preTaxAmount || (inv.totalAmount - (inv.taxAmount || 0));
+                const tax = inv.taxAmount || 0;
                 const remaining = Math.max(0, (Number(inv.totalAmount) || 0) - (Number(inv.paidAmount) || 0));
+                const isCash = inv.paymentMethod === PAYMENT_METHODS.CASH;
+
                 return `
                   <tr>
                     <td>
@@ -134,10 +141,18 @@ export class InvoicesView extends BaseComponent {
                         ${formatDate(inv.dueDate)}
                       </div>
                     </td>
+                    <td class="text-right font-mono">${formatCurrency(preTax, false)}</td>
+                    <td class="text-right font-mono" style="color: #64748b;">${tax > 0 ? formatCurrency(tax, false) : '-'}</td>
                     <td class="text-right font-mono font-bold">${formatCurrency(inv.totalAmount)}</td>
-                    <td class="text-right font-mono text-success">${formatCurrency(inv.paidAmount)}</td>
+                    <td class="text-right font-mono text-success">${inv.paidAmount > 0 ? formatCurrency(inv.paidAmount) : '-'}</td>
                     <td class="text-right font-mono font-bold ${remaining > 0 ? (inv.type === INVOICE_TYPES.RECEIVABLE ? 'text-primary' : 'text-warning') : ''}">
                       ${formatCurrency(remaining)}
+                    </td>
+                    <td class="text-center">
+                      ${isCash 
+                        ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #b45309; font-size: 0.72rem; font-weight: 600;" title="Thanh toán tiền mặt tại quỹ"><i data-lucide="banknote" style="width: 12px; height: 12px;"></i> Tiền mặt</span>`
+                        : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #1d4ed8; font-size: 0.72rem; font-weight: 600;" title="Chuyển khoản qua ngân hàng"><i data-lucide="landmark" style="width: 12px; height: 12px;"></i> Chuyển khoản</span>`
+                      }
                     </td>
                     <td>${renderInvoiceStatusBadge(inv.status)}</td>
                     <td class="text-center">
@@ -445,9 +460,11 @@ export class InvoicesView extends BaseComponent {
                         <th>Đối Tác</th>
                         <th>Phân Loại</th>
                         <th>Ngày Lập / Hạn Nợ</th>
+                        <th class="text-right">Chưa Thuế (VNĐ)</th>
+                        <th class="text-right">Thuế VAT (VNĐ)</th>
                         <th class="text-right">Tổng Tiền (VNĐ)</th>
                         <th class="text-right">Đã Trả (VNĐ)</th>
-                        <th>Hàng Hóa / Ghi Chú</th>
+                        <th class="text-center">Hình Thức</th>
                         <th>Trạng Thái</th>
                       </tr>
                     </thead>
@@ -473,13 +490,15 @@ export class InvoicesView extends BaseComponent {
                             <div>${formatDate(inv.issueDate)}</div>
                             <div class="font-mono" style="font-size: 0.7rem; color: var(--text-muted);">Hạn: ${formatDate(inv.dueDate)}</div>
                           </td>
+                          <td class="text-right font-mono">${formatCurrency(inv.preTaxAmount || (inv.totalAmount - (inv.taxAmount || 0)), false)}</td>
+                          <td class="text-right font-mono" style="color: #64748b;">${inv.taxAmount > 0 ? formatCurrency(inv.taxAmount, false) : '-'}</td>
                           <td class="text-right font-mono font-bold">${formatCurrency(inv.totalAmount)}</td>
                           <td class="text-right font-mono text-success">${inv.paidAmount > 0 ? formatCurrency(inv.paidAmount) : "-"}</td>
-                          <td>
-                            <div style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(inv.itemName)}">
-                              ${escapeHtml(inv.itemName)}
-                            </div>
-                            ${inv.notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(inv.notes)}">${escapeHtml(inv.notes)}</div>` : ''}
+                          <td class="text-center">
+                            ${inv.paymentMethod === 'CASH'
+                              ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #b45309; font-size: 0.7rem; font-weight: 600;">Tiền mặt</span>`
+                              : `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #1d4ed8; font-size: 0.7rem; font-weight: 600;">Chuyển khoản</span>`
+                            }
                           </td>
                           <td>
                             ${!inv.isValid ? `
@@ -599,6 +618,12 @@ export class InvoicesView extends BaseComponent {
     const todayStr = toInputDateFormat(new Date());
     const defaultDueStr = toInputDateFormat(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 
+    const initialPreTax = invoice ? (invoice.preTaxAmount || (invoice.totalAmount - (invoice.taxAmount || 0))) : 0;
+    const initialTax = invoice ? (invoice.taxAmount || 0) : 0;
+    const initialTotal = invoice ? invoice.totalAmount : 0;
+    const initialPaid = invoice ? (invoice.paidAmount || 0) : 0;
+    const initialMethod = invoice ? (invoice.paymentMethod || PAYMENT_METHODS.BANK_TRANSFER) : PAYMENT_METHODS.BANK_TRANSFER;
+
     const bodyHtml = `
       <form id="invoice-form">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
@@ -611,13 +636,13 @@ export class InvoicesView extends BaseComponent {
           </div>
           <div class="form-group">
             <label class="form-label">Số Hóa Đơn / Mã Chứng Từ <span class="required">*</span></label>
-            <input type="text" class="form-control font-mono" id="inv-number" required value="${escapeHtml(invoice ? invoice.invoiceNumber : `HD-${Date.now().toString().slice(-6)}`)}">
+            <input type="text" class="form-control font-mono font-bold" id="inv-number" required value="${escapeHtml(invoice ? invoice.invoiceNumber : `HD-${Date.now().toString().slice(-6)}`)}">
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Hàng Hóa / Dịch Vụ / Mục Đích Hóa Đơn <span class="required">*</span></label>
-          <input type="text" class="form-control" id="inv-item-name" required value="${escapeHtml(invoice ? (invoice.itemName || invoice.title || '') : '')}" placeholder="VD: Cung cấp bản quyền phần mềm ERP, Xuất 50 máy tính Dell, Bảo trì Q1...">
+          <input type="text" class="form-control" id="inv-item-name" required value="${escapeHtml(invoice ? (invoice.itemName || invoice.title || '') : '')}" placeholder="VD: Cước vận tải đường biển Hải Phòng - Cát Lái, Cung cấp server Cloud...">
         </div>
 
         <div class="form-group">
@@ -642,18 +667,74 @@ export class InvoicesView extends BaseComponent {
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Tổng Tiền Hóa Đơn (VNĐ) <span class="required">*</span></label>
-          <div class="input-group">
-            <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-total-amount" value="${invoice ? formatCurrency(invoice.totalAmount, false) : ''}" placeholder="0" required>
-            <span class="input-group-text">VNĐ</span>
+        <!-- Khối Tính Tiền & Thuế VAT -->
+        <div style="background: var(--bg-surface-subtle); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--border-main); margin-bottom: var(--space-3);">
+          <div style="font-weight: 700; font-size: 0.85rem; margin-bottom: var(--space-2); color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
+            <span>Chi Tiết Giá Trị & Thuế VAT</span>
+            <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">Tổng tiền = Chưa thuế + Tiền thuế</span>
           </div>
-          <div class="currency-preview-text" id="inv-total-amount-preview"></div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Tiền Chưa Thuế (VNĐ) <span class="required">*</span></label>
+              <div class="input-group">
+                <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-pretax-amount" value="${initialPreTax > 0 ? formatCurrency(initialPreTax, false) : ''}" placeholder="0" required>
+                <span class="input-group-text">VNĐ</span>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label class="form-label" style="margin-bottom: 0;">Tiền Thuế VAT (VNĐ)</label>
+                <div class="flex gap-1" style="margin-bottom: 4px;">
+                  <button type="button" class="btn btn-secondary btn-xs btn-vat-rate" data-rate="0" style="padding: 1px 6px; font-size: 0.7rem;">0%</button>
+                  <button type="button" class="btn btn-secondary btn-xs btn-vat-rate" data-rate="5" style="padding: 1px 6px; font-size: 0.7rem;">5%</button>
+                  <button type="button" class="btn btn-secondary btn-xs btn-vat-rate" data-rate="8" style="padding: 1px 6px; font-size: 0.7rem;">8%</button>
+                  <button type="button" class="btn btn-secondary btn-xs btn-vat-rate" data-rate="10" style="padding: 1px 6px; font-size: 0.7rem;">10%</button>
+                </div>
+              </div>
+              <div class="input-group">
+                <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-tax-amount" value="${initialTax > 0 ? formatCurrency(initialTax, false) : ''}" placeholder="0">
+                <span class="input-group-text">VNĐ</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: var(--space-3); margin-bottom: 0;">
+            <label class="form-label" style="font-weight: 700;">Tổng Tiền Thanh Toán (VNĐ) <span class="required">*</span></label>
+            <div class="input-group">
+              <input type="text" inputmode="numeric" class="form-control font-mono font-bold currency-input" id="inv-total-amount" value="${initialTotal > 0 ? formatCurrency(initialTotal, false) : ''}" placeholder="0" required style="font-size: 1.05rem; color: var(--primary-700);">
+              <span class="input-group-text">VNĐ</span>
+            </div>
+            <div class="currency-preview-text" id="inv-total-amount-preview"></div>
+          </div>
+        </div>
+
+        <!-- Khối Thanh Toán & Hình Thức -->
+        <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: var(--space-3);">
+          <div class="form-group">
+            <label class="form-label">Hình Thức Thanh Toán <span class="required">*</span></label>
+            <select class="form-select" id="inv-payment-method">
+              <option value="${PAYMENT_METHODS.BANK_TRANSFER}" ${initialMethod === PAYMENT_METHODS.BANK_TRANSFER ? 'selected' : ''}>🏦 Chuyển khoản qua ngân hàng</option>
+              <option value="${PAYMENT_METHODS.CASH}" ${initialMethod === PAYMENT_METHODS.CASH ? 'selected' : ''}>💵 Tiền mặt tại quỹ (Dưới 5 triệu)</option>
+            </select>
+            <div style="font-size: 0.725rem; color: #b45309; margin-top: 3px;" id="inv-cash-warning-note">
+              * Quy định: Tiền mặt từ 5.000.000 VNĐ trở lên bắt buộc chuyển qua Ngân hàng.
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Đã Thanh Toán (VNĐ)</label>
+            <div class="input-group">
+              <input type="text" inputmode="numeric" class="form-control font-mono currency-input" id="inv-paid-amount" value="${initialPaid > 0 ? formatCurrency(initialPaid, false) : ''}" placeholder="0">
+              <span class="input-group-text">VNĐ</span>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Diễn Giải / Ghi Chú Thêm</label>
-          <textarea class="form-control" id="inv-notes" placeholder="Chi tiết hợp đồng, điều khoản giao hàng, ghi chú nội bộ...">${escapeHtml(invoice ? invoice.notes : '')}</textarea>
+          <textarea class="form-control" id="inv-notes" placeholder="Chi tiết hợp đồng, điều khoản thanh toán, ghi chú...">${escapeHtml(invoice ? invoice.notes : '')}</textarea>
         </div>
       </form>
     `;
@@ -668,6 +749,36 @@ export class InvoicesView extends BaseComponent {
       bodyHtml,
       footerHtml,
       onOpen: (body, footer) => {
+        const preTaxInput = qs("#inv-pretax-amount", body);
+        const taxInput = qs("#inv-tax-amount", body);
+        const totalInput = qs("#inv-total-amount", body);
+        const paidInput = qs("#inv-paid-amount", body);
+        const methodSelect = qs("#inv-payment-method", body);
+
+        // Auto sum: pretax + tax = total
+        const updateAutoTotal = () => {
+          const preTax = parseCurrency(preTaxInput.value);
+          const tax = parseCurrency(taxInput.value);
+          if (preTax > 0 || tax > 0) {
+            const sum = preTax + tax;
+            totalInput.value = formatCurrency(sum, false);
+          }
+        };
+
+        preTaxInput.oninput = updateAutoTotal;
+        taxInput.oninput = updateAutoTotal;
+
+        // Quick VAT rate buttons
+        qsa(".btn-vat-rate", body).forEach(btn => {
+          btn.onclick = () => {
+            const rate = parseFloat(btn.dataset.rate) || 0;
+            const preTax = parseCurrency(preTaxInput.value);
+            const calculatedTax = Math.round((preTax * rate) / 100);
+            taxInput.value = calculatedTax > 0 ? formatCurrency(calculatedTax, false) : "0";
+            updateAutoTotal();
+          };
+        });
+
         qs("#btn-save-invoice", footer).onclick = () => {
           const partnerId = qs("#inv-partner", body).value;
           const selectedPartner = partners.find(p => p.id === partnerId);
@@ -675,6 +786,26 @@ export class InvoicesView extends BaseComponent {
 
           if (!itemName) {
             Toast.warning("Vui lòng nhập tên hàng hóa / dịch vụ hoặc mục đích hóa đơn!");
+            return;
+          }
+
+          const preTaxAmount = parseCurrency(preTaxInput.value);
+          const taxAmount = parseCurrency(taxInput.value);
+          let totalAmount = parseCurrency(totalInput.value);
+          if (totalAmount <= 0 && (preTaxAmount > 0 || taxAmount > 0)) {
+            totalAmount = preTaxAmount + taxAmount;
+          }
+          const paidAmount = parseCurrency(paidInput.value);
+          const paymentMethod = methodSelect.value;
+
+          // Validation quy tắc tiền mặt
+          if (paymentMethod === PAYMENT_METHODS.CASH && (paidAmount >= 5000000 || totalAmount >= 5000000)) {
+            Toast.error("Thanh toán Tiền mặt từ 5.000.000 VNĐ trở lên không hợp lệ! Vui lòng chọn Hình thức Chuyển khoản ngân hàng.");
+            return;
+          }
+
+          if (paidAmount > totalAmount) {
+            Toast.warning("Số tiền đã thanh toán không được lớn hơn Tổng tiền hóa đơn!");
             return;
           }
 
@@ -687,7 +818,11 @@ export class InvoicesView extends BaseComponent {
             partnerName: selectedPartner ? selectedPartner.name : "",
             issueDate: qs("#inv-issue-date", body).value,
             dueDate: qs("#inv-due-date", body).value,
-            totalAmount: parseCurrency(qs("#inv-total-amount", body).value),
+            preTaxAmount,
+            taxAmount,
+            totalAmount,
+            paidAmount,
+            paymentMethod,
             notes: qs("#inv-notes", body).value.trim()
           };
 
@@ -747,7 +882,7 @@ export class InvoicesView extends BaseComponent {
             <label class="form-label">Phương Thức Thanh Toán</label>
             <select class="form-select" id="qp-method">
               <option value="${PAYMENT_METHODS.BANK_TRANSFER}">🏦 Chuyển khoản ngân hàng</option>
-              <option value="${PAYMENT_METHODS.CASH}">💵 Tiền mặt</option>
+              <option value="${PAYMENT_METHODS.CASH}">💵 Tiền mặt tại quỹ (Dưới 5 triệu)</option>
             </select>
           </div>
         </div>
@@ -804,6 +939,13 @@ export class InvoicesView extends BaseComponent {
           }
 
           const method = methodSelect.value;
+
+          // Validation tiền mặt >= 5 triệu
+          if (method === PAYMENT_METHODS.CASH && amount >= 5000000) {
+            Toast.error("Thu/Chi tiền mặt chỉ áp dụng cho số tiền dưới 5.000.000 VNĐ. Số tiền từ 5.000.000 VNĐ trở lên bắt buộc chuyển khoản ngân hàng!");
+            return;
+          }
+
           const vType = getVoucherType(baseType, method);
 
           const paymentData = {

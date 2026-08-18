@@ -744,11 +744,16 @@ export class VoucherTemplates {
           <div class="voucher-sub-title">Ngày ${day} tháng ${month} năm ${year}</div>
         </div>
 
-        <!-- Kính Gửi -->
+        <!-- Kính Gửi Động -->
         <div class="voucher-recipient-box">
           <div><b>Kính gửi:</b></div>
-          <div style="padding-left: 20px;">• Ban Giám Đốc</div>
-          <div style="padding-left: 20px;">• Phòng Kế Toán - Tài Chính</div>
+          ${((request.dearTo || request.recipient || "Ban Giám Đốc\nPhòng Kế Toán - Tài Chính"))
+            .split(/[\n;]| - /)
+            .map(s => s.trim())
+            .filter(Boolean)
+            .map(item => `<div style="padding-left: 20px;">• ${escapeHtml(item)}</div>`)
+            .join('')
+          }
         </div>
 
         <!-- Bảng Thông Tin Chi Tiết -->
