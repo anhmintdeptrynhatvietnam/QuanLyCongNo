@@ -21,7 +21,8 @@ class StateStore {
       activeView: "dashboard",
       searchQuery: "",
       currentUser: null, // { uid, displayName, email, photoURL, isLoggedIn }
-      syncStatus: "offline" // "offline" | "syncing" | "synced" | "error"
+      syncStatus: "offline", // "offline" | "syncing" | "synced" | "error"
+      lastSyncError: null
     };
   }
 
@@ -54,31 +55,71 @@ class StateStore {
     if (user) {
       this.state.currentUser = user;
       this.state.syncStatus = "syncing";
+      this.state.lastSyncError = null;
       this.notify();
 
       const userId = user.uid;
       // 1. Tải cache cục bộ của user trước để hiển thị tức thì
       const localData = StorageService.loadAll(userId);
-      this.state.partners = localData.partners || [];
-      this.state.invoices = localData.invoices || [];
-      this.state.payments = localData.payments || [];
-      this.state.paymentRequests = localData.paymentRequests || [];
-      this.state.settings = localData.settings || { ...DEFAULT_SETTINGS };
+      const hasLocalData = (localData.partners && localData.partners.length > 0) || 
+                           (localData.invoices && localData.invoices.length > 0);
+
+      if (hasLocalData) {
+        this.state.partners = localData.partners || [];
+        this.state.invoices = localData.invoices || [];
+        this.state.payments = localData.payments || [];
+        this.state.paymentRequests = localData.paymentRequests || [];
+        this.state.settings = localData.settings || { ...DEFAULT_SETTINGS };
+      } else {
+        // Nếu user này chưa có cache local, kiểm tra xem có dữ liệu Guest (Offline) vừa nhập không
+        const guestData = StorageService.loadAll(null);
+        const hasGuestData = (guestData.partners && guestData.partners.length > 0) || 
+                             (guestData.invoices && guestData.invoices.length > 0);
+        if (hasGuestData) {
+          console.log("[StateStore] Tự động chuyển đổi dữ liệu Khách (Guest) sang tài khoản Google mới đăng nhập...");
+          this.state.partners = guestData.partners || [];
+          this.state.invoices = guestData.invoices || [];
+          this.state.payments = guestData.payments || [];
+          this.state.paymentRequests = guestData.paymentRequests || [];
+          this.state.settings = guestData.settings || { ...DEFAULT_SETTINGS };
+          StorageService.saveAll(this.state, userId);
+        } else {
+          this.state.partners = [];
+          this.state.invoices = [];
+          this.state.payments = [];
+          this.state.paymentRequests = [];
+          this.state.settings = { ...DEFAULT_SETTINGS };
+        }
+      }
 
       // 2. Kéo dữ liệu từ Cloud Firestore
-      const cloudData = await FirebaseService.fetchUserData(userId);
-      if (cloudData) {
-        this.state.partners = cloudData.partners || [];
-        this.state.invoices = (cloudData.invoices || []).map(inv => ({
-          ...inv,
-          status: calculateInvoiceStatus(inv)
-        }));
-        this.state.payments = cloudData.payments || [];
-        this.state.paymentRequests = cloudData.paymentRequests || [];
-        this.state.settings = cloudData.settings || { ...DEFAULT_SETTINGS };
-      } else if (this.state.partners.length > 0 || this.state.invoices.length > 0) {
-        // Nếu trên Cloud chưa có dữ liệu mà máy có dữ liệu thì đẩy lên Cloud
-        await FirebaseService.saveUserData(userId, this.state);
+      try {
+        const cloudData = await FirebaseService.fetchUserData(userId);
+        if (cloudData && ((cloudData.partners && cloudData.partners.length > 0) || (cloudData.invoices && cloudData.invoices.length > 0) || (cloudData.payments && cloudData.payments.length > 0))) {
+          this.state.partners = cloudData.partners || [];
+          this.state.invoices = (cloudData.invoices || []).map(inv => ({
+            ...inv,
+            status: calculateInvoiceStatus(inv)
+          }));
+          this.state.payments = cloudData.payments || [];
+          this.state.paymentRequests = cloudData.paymentRequests || [];
+          this.state.settings = cloudData.settings || { ...DEFAULT_SETTINGS };
+          this.state.syncStatus = "synced";
+          this.state.lastSyncError = null;
+          StorageService.saveAll(this.state, userId);
+        } else if (this.state.partners.length > 0 || this.state.invoices.length > 0) {
+          // Nếu trên Cloud chưa có dữ liệu mà máy có dữ liệu thì đẩy lên Cloud
+          await FirebaseService.saveUserData(userId, this.state);
+          this.state.syncStatus = "synced";
+          this.state.lastSyncError = null;
+        } else {
+          this.state.syncStatus = "synced";
+          this.state.lastSyncError = null;
+        }
+      } catch (cloudErr) {
+        console.error("[StateStore] Lỗi khi tải dữ liệu Cloud Firestore:", cloudErr);
+        this.state.syncStatus = "error";
+        this.state.lastSyncError = cloudErr.message || "Lỗi quyền hoặc kết nối Cloud Firestore";
       }
 
       // 3. Lắng nghe Realtime sync từ Cloud
@@ -94,17 +135,22 @@ class StateStore {
           this.state.settings = remoteData.settings || { ...DEFAULT_SETTINGS };
           this.state.partners = recalculatePartnerBalances(this.state.partners, this.state.invoices);
           this.state.syncStatus = "synced";
+          this.state.lastSyncError = null;
           StorageService.saveAll(this.state, userId);
           this.notify();
         }
+      }, (err) => {
+        this.state.syncStatus = "error";
+        this.state.lastSyncError = err?.message || "Lỗi Realtime Firestore";
+        this.notify();
       });
 
-      this.state.syncStatus = "synced";
       this.recomputeAndPersist(true);
     } else {
       // Đăng xuất -> Chuyển về chế độ Khách (Offline Guest)
       this.state.currentUser = null;
       this.state.syncStatus = "offline";
+      this.state.lastSyncError = null;
 
       const guestData = StorageService.loadAll(null);
       this.state.partners = guestData.partners || [];
@@ -161,6 +207,7 @@ class StateStore {
       partners: this.state.partners,
       invoices: this.state.invoices,
       payments: this.state.payments,
+      paymentRequests: this.state.paymentRequests,
       settings: this.state.settings
     }, userId);
 
@@ -169,10 +216,12 @@ class StateStore {
       FirebaseService.saveUserData(userId, this.state)
         .then(() => {
           this.state.syncStatus = "synced";
+          this.state.lastSyncError = null;
         })
         .catch(err => {
           console.error("[StateStore] Lỗi đồng bộ Cloud Firestore:", err);
           this.state.syncStatus = "error";
+          this.state.lastSyncError = err.message || "Lỗi quyền hoặc kết nối Firestore";
         });
     }
 

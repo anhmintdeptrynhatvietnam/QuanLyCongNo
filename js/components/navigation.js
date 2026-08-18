@@ -115,9 +115,16 @@ export class Navigation {
     const syncDot = qs(".sync-dot");
     if (syncText) {
       if (state.currentUser) {
-        syncText.textContent = state.syncStatus === "syncing" ? "Đang đồng bộ Cloud..." : `Cloud: ${state.currentUser.email.split('@')[0]}`;
-        if (syncDot) {
-          syncDot.style.backgroundColor = state.syncStatus === "error" ? "var(--danger-500)" : "var(--success-500)";
+        if (state.syncStatus === "error") {
+          syncText.textContent = "⚠️ Lỗi đồng bộ Cloud";
+          syncText.title = state.lastSyncError || "Lỗi quyền hoặc kết nối Firestore";
+          if (syncDot) syncDot.style.backgroundColor = "var(--danger-500)";
+        } else if (state.syncStatus === "syncing") {
+          syncText.textContent = "Đang đồng bộ Cloud...";
+          if (syncDot) syncDot.style.backgroundColor = "var(--warning-500)";
+        } else {
+          syncText.textContent = `Cloud: ${state.currentUser.email.split('@')[0]}`;
+          if (syncDot) syncDot.style.backgroundColor = "var(--success-500)";
         }
       } else {
         syncText.textContent = "Chế độ: Offline LocalStorage";

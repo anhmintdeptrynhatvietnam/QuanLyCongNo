@@ -358,8 +358,8 @@ export class StorageService {
   /**
    * Xuất toàn bộ CSDL ra file JSON tải về máy
    */
-  static exportBackupJSON() {
-    const data = this.loadAll();
+  static exportBackupJSON(userId = null) {
+    const data = this.loadAll(userId);
     const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
     const dlAnchor = document.createElement("a");
     dlAnchor.setAttribute("href", jsonStr);
@@ -371,11 +371,11 @@ export class StorageService {
   /**
    * Phục hồi CSDL từ file JSON
    */
-  static importBackupJSON(jsonData) {
-    if (!jsonData || !Array.isArray(jsonData.partners) || !Array.isArray(jsonData.invoices)) {
+  static importBackupJSON(jsonData, userId = null) {
+    if (!jsonData || (!Array.isArray(jsonData.partners) && !Array.isArray(jsonData.invoices))) {
       throw new Error("File sao lưu không đúng định dạng chuẩn của ứng dụng!");
     }
-    this.saveAll(jsonData);
+    this.saveAll(jsonData, userId);
     return true;
   }
 }

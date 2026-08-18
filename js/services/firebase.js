@@ -147,12 +147,57 @@ export class FirebaseService {
   }
 
   /**
+    static lastError = null;
+
+  /**
+   * Kiểm tra quyền truy cập thực tế (Read/Write) vào Cloud Firestore của User
+   * Giúp chẩn đoán ngay xem Security Rules trên Firebase Console đã được mở chưa
+   * @param {string} userId
+   * @returns {Promise<{ success: boolean, message: string, errorCode?: string }>}
+   */
+  static async testFirestoreAccess(userId) {
+    if (!this.isConfigured()) {
+      return { success: false, message: "FIREBASE_CONFIG chưa được cấu hình.", errorCode: "CONFIG_MISSING" };
+    }
+    if (!this.isInitialized) {
+      const ok = await this.init();
+      if (!ok) return { success: false, message: "Không thể khởi tạo Firebase SDK.", errorCode: "INIT_FAILED" };
+    }
+    if (!this.db || !userId) {
+      return { success: false, message: "Chưa đăng nhập tài khoản.", errorCode: "NO_USER" };
+    }
+
+    try {
+      const { doc, setDoc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+      const pingDocRef = doc(this.db, "users", userId, "state", "ping");
+      
+      // Thử ghi 1 bản ghi ping
+      await setDoc(pingDocRef, { ping: true, timestamp: new Date().toISOString() });
+      
+      // Thử đọc lại bản ghi ping
+      const snap = await getDoc(pingDocRef);
+      if (snap.exists()) {
+        return { success: true, message: "Kết nối Cloud Firestore thành công! Quyền Đọc/Ghi hoạt động hoàn hảo." };
+      }
+      return { success: false, message: "Không thể đọc dữ liệu vừa ghi từ Firestore.", errorCode: "READ_FAILED" };
+    } catch (err) {
+      console.error("[FirebaseService] Test Firestore Access thất bại:", err);
+      const isPermissionDenied = err.code === "permission-denied" || err.message?.includes("permission");
+      const msg = isPermissionDenied
+        ? "Bị chặn quyền truy cập (Permission Denied)! Bạn cần mở Firestore Security Rules trên Firebase Console."
+        : `Lỗi kết nối Firestore: ${err.message || err.code}`;
+      return { success: false, message: msg, errorCode: err.code || "ERROR" };
+    }
+  }
+
+  /**
    * Lắng nghe thay đổi dữ liệu Realtime của User từ Firestore
    * @param {string} userId
    * @param {Function} onDataUpdate
+   * @param {Function} onError
    * @returns {Promise<Function>} unsubscribe function
    */
-  static async listenUserData(userId, onDataUpdate) {
+  static async listenUserData(userId, onDataUpdate, onError = null) {
     if (!this.isInitialized || !this.db || !userId) return () => {};
 
     // Hủy listener cũ nếu có
@@ -174,11 +219,17 @@ export class FirebaseService {
         }
       }, (err) => {
         console.error("[FirebaseService] Lỗi Realtime Snapshot:", err);
+        this.lastError = err;
+        if (typeof onError === "function") {
+          onError(err);
+        }
       });
 
       return this.activeSnapshotUnsub;
     } catch (e) {
       console.error("[FirebaseService] Lỗi thiết lập listener Firestore:", e);
+      this.lastError = e;
+      if (typeof onError === "function") onError(e);
       return () => {};
     }
   }
@@ -197,41 +248,52 @@ export class FirebaseService {
       const docSnap = await getDoc(userDocRef);
 
       if (docSnap.exists()) {
+        this.lastError = null;
         return docSnap.data();
       }
       return null;
     } catch (e) {
       console.error("[FirebaseService] Lỗi tải dữ liệu Firestore:", e);
-      return null;
+      this.lastError = e;
+      throw e;
     }
   }
 
   /**
    * Lưu và đồng bộ dữ liệu của User lên Cloud Firestore
+   * Đảm bảo lọc sạch các giá trị undefined và lưu đầy đủ các bảng dữ liệu
    * @param {string} userId
    * @param {Object} stateData
    */
   static async saveUserData(userId, stateData) {
-    if (!this.isInitialized || !this.db || !userId) return false;
+    if (!this.isInitialized || !this.db || !userId) {
+      throw new Error("Firebase chưa được khởi tạo hoặc chưa đăng nhập.");
+    }
 
     try {
       const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
       const userDocRef = doc(this.db, "users", userId, "state", "current");
 
-      const payload = {
+      const rawPayload = {
         partners: stateData.partners || [],
         invoices: stateData.invoices || [],
         payments: stateData.payments || [],
+        paymentRequests: stateData.paymentRequests || [],
         settings: stateData.settings || {},
         updatedAt: new Date().toISOString(),
         updatedByEmail: this.currentUser?.email || ""
       };
 
+      // Sanitize để loại bỏ hoàn toàn các trường undefined tránh gây lỗi Firestore setDoc
+      const payload = JSON.parse(JSON.stringify(rawPayload));
+
       await setDoc(userDocRef, payload, { merge: true });
+      this.lastError = null;
       return true;
     } catch (e) {
       console.error("[FirebaseService] Lỗi lưu Firestore:", e);
-      return false;
+      this.lastError = e;
+      throw e;
     }
   }
 }
