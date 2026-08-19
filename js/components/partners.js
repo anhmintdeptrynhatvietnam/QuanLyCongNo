@@ -11,54 +11,225 @@ import { formatCurrency, formatDate, parseCurrency, formatCurrencyNumber } from 
 import { PARTNER_TYPES, PARTNER_TYPE_LABELS } from '../config.js';
 import { ExportService } from '../services/export-service.js';
 import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
+import { isAmountInRange, countActiveFilters, sortDataList } from '../utils/filter-helpers.js';
 
 export class PartnersView extends BaseComponent {
   constructor(containerId) {
     super(containerId);
-    this.currentFilter = "ALL";
+    this.defaultFilterState = {
+      partnerType: "ALL",
+      debtCondition: "ALL",
+      minReceivable: "",
+      maxReceivable: "",
+      sortBy: "name",
+      sortOrder: "asc",
+      searchQuery: "",
+      isAdvancedOpen: false
+    };
+    this.filterState = { ...this.defaultFilterState };
   }
 
   render(state) {
-    let filteredPartners = state.partners;
+    let filteredPartners = state.partners || [];
 
-    if (this.currentFilter !== "ALL") {
-      filteredPartners = filteredPartners.filter(p => p.type === this.currentFilter || p.type === PARTNER_TYPES.BOTH);
+    // 1. Lọc theo Phân loại đối tác
+    if (this.filterState.partnerType !== "ALL") {
+      filteredPartners = filteredPartners.filter(p => p.type === this.filterState.partnerType || p.type === PARTNER_TYPES.BOTH);
     }
 
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
+    // 2. Lọc theo Tình trạng công nợ
+    if (this.filterState.debtCondition !== "ALL") {
+      switch (this.filterState.debtCondition) {
+        case "HAS_RECEIVABLE":
+          filteredPartners = filteredPartners.filter(p => (Number(p.totalReceivable) || 0) > 0);
+          break;
+        case "HAS_PAYABLE":
+          filteredPartners = filteredPartners.filter(p => (Number(p.totalPayable) || 0) > 0);
+          break;
+        case "HAS_OVERDUE":
+          filteredPartners = filteredPartners.filter(p => (Number(p.overdueReceivable) || 0) > 0);
+          break;
+        case "EXCEED_LIMIT":
+          filteredPartners = filteredPartners.filter(p => {
+            const limit = Number(p.creditLimit) || 0;
+            const rec = Number(p.totalReceivable) || 0;
+            return limit > 0 && rec >= limit;
+          });
+          break;
+        case "ZERO_DEBT":
+          filteredPartners = filteredPartners.filter(p => (Number(p.totalReceivable) || 0) === 0 && (Number(p.totalPayable) || 0) === 0);
+          break;
+      }
+    }
+
+    // 3. Lọc theo Khoảng dư nợ phải thu (Min - Max)
+    if (this.filterState.minReceivable !== "" || this.filterState.maxReceivable !== "") {
       filteredPartners = filteredPartners.filter(p =>
-        (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.code && p.code.toLowerCase().includes(q)) ||
-        (p.taxCode && p.taxCode.includes(q))
+        isAmountInRange(p.totalReceivable || 0, this.filterState.minReceivable, this.filterState.maxReceivable)
       );
     }
 
+    // 4. Lọc theo Tìm kiếm (Header Global Search hoặc Search nội bộ của View)
+    const effectiveSearch = (this.filterState.searchQuery || state.searchQuery || "").trim().toLowerCase();
+    if (effectiveSearch) {
+      filteredPartners = filteredPartners.filter(p =>
+        (p.name && p.name.toLowerCase().includes(effectiveSearch)) ||
+        (p.code && p.code.toLowerCase().includes(effectiveSearch)) ||
+        (p.taxCode && p.taxCode.toLowerCase().includes(effectiveSearch)) ||
+        (p.phone && p.phone.toLowerCase().includes(effectiveSearch)) ||
+        (p.address && p.address.toLowerCase().includes(effectiveSearch)) ||
+        (p.contactPerson && p.contactPerson.toLowerCase().includes(effectiveSearch))
+      );
+    }
+
+    // 5. Sắp xếp danh sách
+    filteredPartners = sortDataList(filteredPartners, this.filterState.sortBy, this.filterState.sortOrder);
+
+    const activeFilterCount = countActiveFilters(this.filterState, this.defaultFilterState);
+
+    const countAll = state.partners.length;
+    const countCust = state.partners.filter(p => p.type === PARTNER_TYPES.CUSTOMER || p.type === PARTNER_TYPES.BOTH).length;
+    const countVend = state.partners.filter(p => p.type === PARTNER_TYPES.VENDOR || p.type === PARTNER_TYPES.BOTH).length;
+    const countOverdue = state.partners.filter(p => (Number(p.overdueReceivable) || 0) > 0).length;
+
     return `
-      <!-- Action Header -->
-      <div class="action-header">
-        <div class="filter-group">
-          <button class="btn btn-sm ${this.currentFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}" data-partner-filter="ALL">
-            Tất Cả (${state.partners.length})
-          </button>
-          <button class="btn btn-sm ${this.currentFilter === PARTNER_TYPES.CUSTOMER ? 'btn-primary' : 'btn-secondary'}" data-partner-filter="${PARTNER_TYPES.CUSTOMER}">
-            Khách Hàng (${state.partners.filter(p => p.type === PARTNER_TYPES.CUSTOMER || p.type === PARTNER_TYPES.BOTH).length})
-          </button>
-          <button class="btn btn-sm ${this.currentFilter === PARTNER_TYPES.VENDOR ? 'btn-primary' : 'btn-secondary'}" data-partner-filter="${PARTNER_TYPES.VENDOR}">
-            Nhà Cung Cấp (${state.partners.filter(p => p.type === PARTNER_TYPES.VENDOR || p.type === PARTNER_TYPES.BOTH).length})
-          </button>
+      <!-- Action Header & Modern Filter Card -->
+      <div class="filter-card">
+        <div class="filter-toolbar">
+          <div class="filter-left">
+            <!-- Quick Filter Pills -->
+            <button class="btn btn-sm ${this.filterState.partnerType === 'ALL' ? 'btn-primary' : 'btn-secondary'}" data-partner-filter="ALL">
+              Tất Cả (${countAll})
+            </button>
+            <button class="btn btn-sm ${this.filterState.partnerType === PARTNER_TYPES.CUSTOMER ? 'btn-primary' : 'btn-secondary'}" data-partner-filter="${PARTNER_TYPES.CUSTOMER}">
+              Khách Hàng (${countCust})
+            </button>
+            <button class="btn btn-sm ${this.filterState.partnerType === PARTNER_TYPES.VENDOR ? 'btn-primary' : 'btn-secondary'}" data-partner-filter="${PARTNER_TYPES.VENDOR}">
+              Nhà Cung Cấp (${countVend})
+            </button>
+
+            <!-- Search box in toolbar -->
+            <div class="filter-search-box">
+              <i data-lucide="search"></i>
+              <input type="text" class="filter-search-input" id="partner-filter-search" placeholder="Tìm tên, mã, MST, SĐT..." value="${escapeHtml(this.filterState.searchQuery)}">
+            </div>
+          </div>
+
+          <div class="filter-right">
+            <!-- Nút bật/tắt bộ lọc nâng cao -->
+            <button class="filter-btn-toggle ${this.filterState.isAdvancedOpen ? 'active' : ''}" id="btn-toggle-partner-filter">
+              <i data-lucide="sliders-horizontal"></i>
+              <span>Bộ Lọc Nâng Cao</span>
+              ${activeFilterCount > 0 ? `<span class="filter-badge-count">${activeFilterCount}</span>` : ''}
+            </button>
+
+            ${activeFilterCount > 0 ? `
+              <button class="filter-btn-reset" id="btn-reset-partner-filter" title="Xóa tất cả bộ lọc về mặc định">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Đặt Lại</span>
+              </button>
+            ` : ''}
+
+            <div class="flex items-center gap-2">
+              <button class="btn btn-secondary btn-sm" id="btn-import-partners-excel" title="Nhập danh bạ đối tác hàng loạt từ file Excel">
+                <i data-lucide="file-spreadsheet"></i>
+                <span>Nhập Excel</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="btn-add-partner">
+                <i data-lucide="user-plus"></i>
+                <span>Thêm Đối Tác</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button class="btn btn-secondary" id="btn-import-partners-excel" title="Nhập danh bạ đối tác hàng loạt từ file Excel">
-            <i data-lucide="file-spreadsheet"></i>
-            <span>Nhập Từ Excel</span>
-          </button>
-          <button class="btn btn-primary" id="btn-add-partner">
-            <i data-lucide="user-plus"></i>
-            <span>Thêm Đối Tác</span>
-          </button>
+        <!-- Khung Bộ Lọc Nâng Cao (Collapsible Drawer) -->
+        <div class="filter-drawer ${this.filterState.isAdvancedOpen ? 'open' : ''}" id="partner-filter-drawer">
+          <div class="filter-grid">
+            <!-- 1. Tình trạng công nợ -->
+            <div class="filter-field">
+              <label class="filter-field-label">Tình Trạng Công Nợ</label>
+              <select class="filter-field-control" id="partner-filter-debt">
+                <option value="ALL" ${this.filterState.debtCondition === 'ALL' ? 'selected' : ''}>Tất cả tình trạng</option>
+                <option value="HAS_RECEIVABLE" ${this.filterState.debtCondition === 'HAS_RECEIVABLE' ? 'selected' : ''}>Có nợ phải thu (>0đ)</option>
+                <option value="HAS_PAYABLE" ${this.filterState.debtCondition === 'HAS_PAYABLE' ? 'selected' : ''}>Có nợ phải trả (>0đ)</option>
+                <option value="HAS_OVERDUE" ${this.filterState.debtCondition === 'HAS_OVERDUE' ? 'selected' : ''}>Có nợ quá hạn (${countOverdue})</option>
+                <option value="EXCEED_LIMIT" ${this.filterState.debtCondition === 'EXCEED_LIMIT' ? 'selected' : ''}>Vượt / Chạm hạn mức tín dụng</option>
+                <option value="ZERO_DEBT" ${this.filterState.debtCondition === 'ZERO_DEBT' ? 'selected' : ''}>Không có dư nợ (0đ)</option>
+              </select>
+            </div>
+
+            <!-- 2. Khoảng dư nợ phải thu (Min - Max) -->
+            <div class="filter-field">
+              <label class="filter-field-label">Dư Nợ Phải Thu (Từ - Đến VNĐ)</label>
+              <div style="display: flex; gap: var(--space-2); align-items: center;">
+                <input type="number" class="filter-field-control" id="partner-filter-min-rec" placeholder="Tối thiểu" value="${this.filterState.minReceivable}">
+                <span style="color: var(--text-muted);">-</span>
+                <input type="number" class="filter-field-control" id="partner-filter-max-rec" placeholder="Tối đa" value="${this.filterState.maxReceivable}">
+              </div>
+            </div>
+
+            <!-- 3. Tiêu chí sắp xếp -->
+            <div class="filter-field">
+              <label class="filter-field-label">Sắp Xếp Theo</label>
+              <select class="filter-field-control" id="partner-filter-sort-by">
+                <option value="name" ${this.filterState.sortBy === 'name' ? 'selected' : ''}>Tên đối tác (A - Z)</option>
+                <option value="totalReceivable" ${this.filterState.sortBy === 'totalReceivable' ? 'selected' : ''}>Dư nợ phải thu</option>
+                <option value="totalPayable" ${this.filterState.sortBy === 'totalPayable' ? 'selected' : ''}>Dư nợ phải trả</option>
+                <option value="overdueReceivable" ${this.filterState.sortBy === 'overdueReceivable' ? 'selected' : ''}>Dư nợ quá hạn</option>
+                <option value="creditLimit" ${this.filterState.sortBy === 'creditLimit' ? 'selected' : ''}>Hạn mức tín dụng</option>
+              </select>
+            </div>
+
+            <!-- 4. Thứ tự sắp xếp -->
+            <div class="filter-field">
+              <label class="filter-field-label">Thứ Tự</label>
+              <select class="filter-field-control" id="partner-filter-sort-order">
+                <option value="asc" ${this.filterState.sortOrder === 'asc' ? 'selected' : ''}>Tăng dần / A → Z</option>
+                <option value="desc" ${this.filterState.sortOrder === 'desc' ? 'selected' : ''}>Giảm dần / Cao nhất trước</option>
+              </select>
+            </div>
+          </div>
         </div>
+
+        <!-- Filter Active Chips Summary Bar -->
+        ${activeFilterCount > 0 ? `
+          <div class="filter-summary-bar">
+            <span class="filter-summary-label"><i data-lucide="filter" style="width: 12px; height: 12px;"></i> Đang lọc:</span>
+            ${this.filterState.partnerType !== 'ALL' ? `
+              <span class="filter-chip">
+                Loại: ${this.filterState.partnerType === PARTNER_TYPES.CUSTOMER ? 'Khách Hàng' : 'Nhà Cung Cấp'}
+                <span class="filter-chip-remove" data-clear-key="partnerType">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.debtCondition !== 'ALL' ? `
+              <span class="filter-chip">
+                Công nợ: ${
+                  this.filterState.debtCondition === 'HAS_RECEIVABLE' ? 'Có nợ phải thu' :
+                  this.filterState.debtCondition === 'HAS_PAYABLE' ? 'Có nợ phải trả' :
+                  this.filterState.debtCondition === 'HAS_OVERDUE' ? 'Có nợ quá hạn' :
+                  this.filterState.debtCondition === 'EXCEED_LIMIT' ? 'Vượt hạn mức' : 'Hết dư nợ'
+                }
+                <span class="filter-chip-remove" data-clear-key="debtCondition">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.minReceivable !== '' || this.filterState.maxReceivable !== '' ? `
+              <span class="filter-chip">
+                Khoảng nợ: ${formatCurrency(this.filterState.minReceivable || 0)} - ${this.filterState.maxReceivable ? formatCurrency(this.filterState.maxReceivable) : '∞'}
+                <span class="filter-chip-remove" data-clear-key="recRange">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.searchQuery ? `
+              <span class="filter-chip">
+                Từ khóa: "${escapeHtml(this.filterState.searchQuery)}"
+                <span class="filter-chip-remove" data-clear-key="searchQuery">&times;</span>
+              </span>
+            ` : ''}
+            <span class="font-mono text-muted" style="margin-left: auto; font-size: 0.725rem;">
+              Hiển thị <b>${filteredPartners.length}</b> / ${state.partners.length} đối tác
+            </span>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Partners Table -->
@@ -80,7 +251,14 @@ export class PartnersView extends BaseComponent {
               ${filteredPartners.length === 0 ? `
                 <tr>
                   <td colspan="7" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
-                    Không tìm thấy đối tác nào phù hợp.
+                    <i data-lucide="users" style="width: 36px; height: 36px; margin-bottom: 8px; color: var(--text-muted); opacity: 0.5;"></i>
+                    <p>Không tìm thấy đối tác nào phù hợp với bộ lọc.</p>
+                    ${activeFilterCount > 0 ? `
+                      <button class="btn btn-secondary btn-sm" id="btn-reset-partner-empty" style="margin-top: 8px;">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span>Xóa Bộ Lọc</span>
+                      </button>
+                    ` : ''}
                   </td>
                 </tr>
               ` : filteredPartners.map(p => {
@@ -145,27 +323,118 @@ export class PartnersView extends BaseComponent {
   }
 
   afterRender(state) {
-    // Filter click
+    // 1. Quick filter tabs (Tất cả / Khách hàng / Nhà cung cấp)
     qsa("[data-partner-filter]", this.container).forEach(btn => {
-      btn.onclick = (e) => {
-        this.currentFilter = btn.dataset.partnerFilter;
+      btn.onclick = () => {
+        this.filterState.partnerType = btn.dataset.partnerFilter;
         this.mount(stateStore.state);
       };
     });
 
-    // Add partner click
+    // 2. Search input (debounced)
+    const searchInput = qs("#partner-filter-search", this.container);
+    if (searchInput) {
+      let debounceTimer = null;
+      searchInput.oninput = (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.filterState.searchQuery = e.target.value;
+          this.mount(stateStore.state);
+        }, 200);
+      };
+    }
+
+    // 3. Toggle Drawer
+    const toggleBtn = qs("#btn-toggle-partner-filter", this.container);
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        this.filterState.isAdvancedOpen = !this.filterState.isAdvancedOpen;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 4. Reset Button
+    const resetBtn = qs("#btn-reset-partner-filter", this.container) || qs("#btn-reset-partner-empty", this.container);
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        this.filterState = { ...this.defaultFilterState, isAdvancedOpen: this.filterState.isAdvancedOpen };
+        this.mount(stateStore.state);
+        Toast.info("Đã đặt lại bộ lọc đối tác");
+      };
+    }
+
+    // 5. Debt Condition Select
+    const debtSelect = qs("#partner-filter-debt", this.container);
+    if (debtSelect) {
+      debtSelect.onchange = (e) => {
+        this.filterState.debtCondition = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 6. Min/Max Receivable
+    const minRecInput = qs("#partner-filter-min-rec", this.container);
+    const maxRecInput = qs("#partner-filter-max-rec", this.container);
+    let rangeTimer = null;
+    const handleRangeChange = () => {
+      clearTimeout(rangeTimer);
+      rangeTimer = setTimeout(() => {
+        this.filterState.minReceivable = minRecInput ? minRecInput.value : "";
+        this.filterState.maxReceivable = maxRecInput ? maxRecInput.value : "";
+        this.mount(stateStore.state);
+      }, 300);
+    };
+    if (minRecInput) minRecInput.oninput = handleRangeChange;
+    if (maxRecInput) maxRecInput.oninput = handleRangeChange;
+
+    // 7. Sort Options
+    const sortBySelect = qs("#partner-filter-sort-by", this.container);
+    if (sortBySelect) {
+      sortBySelect.onchange = (e) => {
+        this.filterState.sortBy = e.target.value;
+        // Tự động chuyển desc khi chọn các trường số tiền
+        if (['totalReceivable', 'totalPayable', 'overdueReceivable', 'creditLimit'].includes(e.target.value)) {
+          this.filterState.sortOrder = 'desc';
+        }
+        this.mount(stateStore.state);
+      };
+    }
+
+    const sortOrderSelect = qs("#partner-filter-sort-order", this.container);
+    if (sortOrderSelect) {
+      sortOrderSelect.onchange = (e) => {
+        this.filterState.sortOrder = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 8. Filter Chips Remove Click
+    qsa("[data-clear-key]", this.container).forEach(chip => {
+      chip.onclick = () => {
+        const key = chip.dataset.clearKey;
+        if (key === 'recRange') {
+          this.filterState.minReceivable = '';
+          this.filterState.maxReceivable = '';
+        } else if (key in this.filterState) {
+          this.filterState[key] = this.defaultFilterState[key];
+        }
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 9. Add partner click
     const addBtn = qs("#btn-add-partner", this.container);
     if (addBtn) {
       addBtn.onclick = () => this.showPartnerModal();
     }
 
-    // Import Excel click
+    // 10. Import Excel click
     const importExcelBtn = qs("#btn-import-partners-excel", this.container);
     if (importExcelBtn) {
       importExcelBtn.onclick = () => this.showImportExcelModal();
     }
 
-    // Edit partner click
+    // 11. Edit partner click
     qsa(".btn-edit-partner", this.container).forEach(btn => {
       btn.onclick = () => {
         const partner = stateStore.state.partners.find(p => p.id === btn.dataset.id);
@@ -173,7 +442,7 @@ export class PartnersView extends BaseComponent {
       };
     });
 
-    // Delete partner click
+    // 12. Delete partner click
     qsa(".btn-delete-partner", this.container).forEach(btn => {
       btn.onclick = () => {
         const partner = stateStore.state.partners.find(p => p.id === btn.dataset.id);

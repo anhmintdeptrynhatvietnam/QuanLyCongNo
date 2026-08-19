@@ -20,20 +20,53 @@ export class DashboardView extends BaseComponent {
     this.topDebtorsChart = null;
     this.selectedYear = new Date().getFullYear();
     this.partnerSearchQuery = "";
+    this.matrixPartnerType = "ALL"; // "ALL" | "CUSTOMER" | "VENDOR"
+    this.matrixDebtStatus = "ALL"; // "ALL" | "HAS_REMAINING" | "HAS_INCURRED"
+    this.matrixSortBy = "remainingDebt"; // "remainingDebt" | "totalDebt" | "paidAmount" | "collectionRate" | "name"
+    this.matrixSortOrder = "desc";
   }
 
   render(state) {
     const kpis = calculateDashboardKPIs(state.partners, state.invoices, state.payments);
     const matrixData = calculateMonthlyReceivablesMatrix(state.partners, state.invoices, state.payments, this.selectedYear);
 
+    // Lọc danh sách đối tác theo phân loại đối tác
+    let filteredPartners = matrixData.partnerMatrix;
+    if (this.matrixPartnerType === "CUSTOMER") {
+      filteredPartners = filteredPartners.filter(p => p.type === "CUSTOMER" || p.type === "BOTH");
+    } else if (this.matrixPartnerType === "VENDOR") {
+      filteredPartners = filteredPartners.filter(p => p.type === "VENDOR" || p.type === "BOTH");
+    }
+
+    // Lọc theo tình trạng dư nợ
+    if (this.matrixDebtStatus === "HAS_REMAINING") {
+      filteredPartners = filteredPartners.filter(p => (Number(p.remainingDebt) || 0) > 0);
+    } else if (this.matrixDebtStatus === "HAS_INCURRED") {
+      filteredPartners = filteredPartners.filter(p => (Number(p.totalDebt) || 0) > 0);
+    }
+
     // Lọc danh sách đối tác theo thanh tìm kiếm
     const cleanSearch = this.partnerSearchQuery.trim().toLowerCase();
-    const filteredPartners = cleanSearch
-      ? matrixData.partnerMatrix.filter(p => 
-          (p.name && p.name.toLowerCase().includes(cleanSearch)) || 
-          (p.code && p.code.toLowerCase().includes(cleanSearch))
-        )
-      : matrixData.partnerMatrix;
+    if (cleanSearch) {
+      filteredPartners = filteredPartners.filter(p => 
+        (p.name && p.name.toLowerCase().includes(cleanSearch)) || 
+        (p.code && p.code.toLowerCase().includes(cleanSearch))
+      );
+    }
+
+    // Sắp xếp danh sách bảng ma trận
+    filteredPartners = [...filteredPartners].sort((a, b) => {
+      let valA = a[this.matrixSortBy];
+      let valB = b[this.matrixSortBy];
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return this.matrixSortOrder === 'desc' ? valB - valA : valA - valB;
+      }
+      const strA = String(valA || '').toLowerCase();
+      const strB = String(valB || '').toLowerCase();
+      if (strA < strB) return this.matrixSortOrder === 'desc' ? 1 : -1;
+      if (strA > strB) return this.matrixSortOrder === 'desc' ? -1 : 1;
+      return 0;
+    });
 
     return `
       <!-- 1. 4 KPI Cards Grid -->
@@ -145,7 +178,7 @@ export class DashboardView extends BaseComponent {
 
       <!-- 3. Section: Bảng Tổng Hợp Công Nợ Phải Thu 12 Tháng Theo Đối Tác (Chuẩn Kế Toán) -->
       <div class="monthly-matrix-card">
-        <div class="monthly-matrix-toolbar">
+        <div class="monthly-matrix-toolbar" style="flex-wrap: wrap; gap: var(--space-3);">
           <div class="flex items-center gap-3">
             <div style="font-weight: 700; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
               <i data-lucide="table-2" style="color: var(--primary-600);"></i>
@@ -155,15 +188,40 @@ export class DashboardView extends BaseComponent {
             <span class="badge badge-secondary font-mono" style="font-size: 0.75rem;">${filteredPartners.length} Đối Tác</span>
           </div>
 
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="search-box" style="width: 260px;">
+          <!-- Filter Toolbar cho Bảng 12 Tháng -->
+          <div class="flex items-center gap-2 flex-wrap" style="margin-left: auto;">
+            <!-- 1. Lọc loại đối tác -->
+            <select id="matrix-filter-type" class="form-control" style="width: 140px; height: 32px; font-size: 0.8rem;">
+              <option value="ALL" ${this.matrixPartnerType === 'ALL' ? 'selected' : ''}>Tất cả đối tác</option>
+              <option value="CUSTOMER" ${this.matrixPartnerType === 'CUSTOMER' ? 'selected' : ''}>Khách Hàng</option>
+              <option value="VENDOR" ${this.matrixPartnerType === 'VENDOR' ? 'selected' : ''}>Nhà Cung Cấp</option>
+            </select>
+
+            <!-- 2. Lọc tình trạng nợ -->
+            <select id="matrix-filter-debt" class="form-control" style="width: 155px; height: 32px; font-size: 0.8rem;">
+              <option value="ALL" ${this.matrixDebtStatus === 'ALL' ? 'selected' : ''}>Tất cả tình trạng</option>
+              <option value="HAS_REMAINING" ${this.matrixDebtStatus === 'HAS_REMAINING' ? 'selected' : ''}>Còn dư nợ (>0đ)</option>
+              <option value="HAS_INCURRED" ${this.matrixDebtStatus === 'HAS_INCURRED' ? 'selected' : ''}>Có phát sinh nợ</option>
+            </select>
+
+            <!-- 3. Sắp xếp -->
+            <select id="matrix-filter-sort" class="form-control" style="width: 165px; height: 32px; font-size: 0.8rem;">
+              <option value="remainingDebt" ${this.matrixSortBy === 'remainingDebt' ? 'selected' : ''}>Còn nợ nhiều nhất</option>
+              <option value="totalDebt" ${this.matrixSortBy === 'totalDebt' ? 'selected' : ''}>Tổng nợ cao nhất</option>
+              <option value="paidAmount" ${this.matrixSortBy === 'paidAmount' ? 'selected' : ''}>Đã thu nhiều nhất</option>
+              <option value="collectionRate" ${this.matrixSortBy === 'collectionRate' ? 'selected' : ''}>Tỷ lệ thu hồi cao nhất</option>
+              <option value="name" ${this.matrixSortBy === 'name' ? 'selected' : ''}>Tên đối tác (A - Z)</option>
+            </select>
+
+            <!-- 4. Tìm kiếm tức thì -->
+            <div class="search-box" style="width: 200px;">
               <i data-lucide="search"></i>
-              <input type="text" id="matrix-partner-search" class="form-control" placeholder="Tìm tên / mã khách hàng..." value="${escapeHtml(this.partnerSearchQuery)}">
+              <input type="text" id="matrix-partner-search" class="form-control" placeholder="Tìm tên/mã..." value="${escapeHtml(this.partnerSearchQuery)}" style="height: 32px;">
             </div>
 
             <button type="button" class="btn btn-secondary btn-sm" id="btn-export-monthly-matrix">
               <i data-lucide="file-spreadsheet"></i>
-              <span>Xuất Excel Bảng 12 Tháng</span>
+              <span>Xuất Excel</span>
             </button>
           </div>
         </div>
@@ -329,21 +387,48 @@ export class DashboardView extends BaseComponent {
       };
     }
 
-    // 2. Tìm kiếm đối tác trên bảng ma trận
-    const searchInput = qs("#matrix-partner-search", this.container);
-    if (searchInput) {
-      searchInput.oninput = (e) => {
-        this.partnerSearchQuery = e.target.value;
-        const cleanSearch = this.partnerSearchQuery.trim().toLowerCase();
-        const rows = qsa("#matrix-table-body tr", this.container);
-        rows.forEach(tr => {
-          const text = tr.textContent.toLowerCase();
-          tr.style.display = text.includes(cleanSearch) ? "" : "none";
-        });
+    // 2. Lọc loại đối tác trong bảng 12 tháng
+    const typeSelect = qs("#matrix-filter-type", this.container);
+    if (typeSelect) {
+      typeSelect.onchange = (e) => {
+        this.matrixPartnerType = e.target.value;
+        this.update(state);
       };
     }
 
-    // 3. Nút xuất Excel Bảng 12 Tháng
+    // 3. Lọc tình trạng nợ
+    const debtSelect = qs("#matrix-filter-debt", this.container);
+    if (debtSelect) {
+      debtSelect.onchange = (e) => {
+        this.matrixDebtStatus = e.target.value;
+        this.update(state);
+      };
+    }
+
+    // 4. Sắp xếp bảng 12 tháng
+    const sortSelect = qs("#matrix-filter-sort", this.container);
+    if (sortSelect) {
+      sortSelect.onchange = (e) => {
+        this.matrixSortBy = e.target.value;
+        this.matrixSortOrder = e.target.value === 'name' ? 'asc' : 'desc';
+        this.update(state);
+      };
+    }
+
+    // 5. Tìm kiếm đối tác trên bảng ma trận
+    const searchInput = qs("#matrix-partner-search", this.container);
+    if (searchInput) {
+      let searchTimer = null;
+      searchInput.oninput = (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          this.partnerSearchQuery = e.target.value;
+          this.update(state);
+        }, 200);
+      };
+    }
+
+    // 6. Nút xuất Excel Bảng 12 Tháng
     const exportBtn = qs("#btn-export-monthly-matrix", this.container);
     if (exportBtn) {
       exportBtn.onclick = () => {

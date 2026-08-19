@@ -21,35 +21,86 @@ import {
   INVOICE_TYPES
 } from '../config.js';
 import { qs, qsa, escapeHtml } from '../utils/dom.js';
+import { isDateInRange, isAmountInRange, countActiveFilters, sortDataList, getPresetDateRange, DATE_PRESETS } from '../utils/filter-helpers.js';
 
 export class PaymentRequestsView extends BaseComponent {
   constructor(containerId) {
     super(containerId);
-    this.currentStatusFilter = "ALL";
+    this.defaultFilterState = {
+      status: "ALL",
+      partnerId: "ALL",
+      paymentMethod: "ALL",
+      dateType: "requestDate", // "requestDate" | "deadlineDate"
+      datePreset: "all",
+      fromDate: "",
+      toDate: "",
+      minAmount: "",
+      maxAmount: "",
+      sortBy: "requestDate",
+      sortOrder: "desc",
+      searchQuery: "",
+      isAdvancedOpen: false
+    };
+    this.filterState = { ...this.defaultFilterState };
   }
 
   render(state) {
     let filteredRequests = state.paymentRequests || [];
 
-    if (this.currentStatusFilter !== "ALL") {
-      filteredRequests = filteredRequests.filter(r => r.status === this.currentStatusFilter);
+    // 1. Lọc theo trạng thái
+    if (this.filterState.status !== "ALL") {
+      filteredRequests = filteredRequests.filter(r => r.status === this.filterState.status);
     }
 
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
+    // 2. Lọc theo đối tác
+    if (this.filterState.partnerId !== "ALL") {
+      filteredRequests = filteredRequests.filter(r => r.partnerId === this.filterState.partnerId);
+    }
+
+    // 3. Lọc theo hình thức thanh toán
+    if (this.filterState.paymentMethod !== "ALL") {
+      filteredRequests = filteredRequests.filter(r => r.paymentMethod === this.filterState.paymentMethod);
+    }
+
+    // 4. Lọc theo khoảng ngày (Ngày lập hoặc Hạn thanh toán)
+    if (this.filterState.fromDate || this.filterState.toDate) {
+      filteredRequests = filteredRequests.filter(r => {
+        const targetDate = this.filterState.dateType === "deadlineDate" ? r.deadlineDate : r.requestDate;
+        return isDateInRange(targetDate, this.filterState.fromDate, this.filterState.toDate);
+      });
+    }
+
+    // 5. Lọc theo khoảng số tiền đề nghị
+    if (this.filterState.minAmount !== "" || this.filterState.maxAmount !== "") {
       filteredRequests = filteredRequests.filter(r =>
-        (r.requestNumber && r.requestNumber.toLowerCase().includes(q)) ||
-        (r.partnerName && r.partnerName.toLowerCase().includes(q)) ||
-        (r.requesterName && r.requesterName.toLowerCase().includes(q)) ||
-        (r.reason && r.reason.toLowerCase().includes(q))
+        isAmountInRange(r.amount || 0, this.filterState.minAmount, this.filterState.maxAmount)
       );
     }
+
+    // 6. Lọc theo tìm kiếm
+    const effectiveSearch = (this.filterState.searchQuery || state.searchQuery || "").trim().toLowerCase();
+    if (effectiveSearch) {
+      filteredRequests = filteredRequests.filter(r =>
+        (r.requestNumber && r.requestNumber.toLowerCase().includes(effectiveSearch)) ||
+        (r.partnerName && r.partnerName.toLowerCase().includes(effectiveSearch)) ||
+        (r.requesterName && r.requesterName.toLowerCase().includes(effectiveSearch)) ||
+        (r.department && r.department.toLowerCase().includes(effectiveSearch)) ||
+        (r.reason && r.reason.toLowerCase().includes(effectiveSearch))
+      );
+    }
+
+    // 7. Sắp xếp danh sách
+    filteredRequests = sortDataList(filteredRequests, this.filterState.sortBy, this.filterState.sortOrder);
 
     const allRequests = state.paymentRequests || [];
     const countPending = allRequests.filter(r => r.status === PAYMENT_REQUEST_STATUS.PENDING).length;
     const countApproved = allRequests.filter(r => r.status === PAYMENT_REQUEST_STATUS.APPROVED).length;
     const countPaid = allRequests.filter(r => r.status === PAYMENT_REQUEST_STATUS.PAID).length;
+    const countRejected = allRequests.filter(r => r.status === PAYMENT_REQUEST_STATUS.REJECTED).length;
     const totalAmount = allRequests.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+
+    const activeFilterCount = countActiveFilters(this.filterState, this.defaultFilterState);
+    const selectedPartner = state.partners.find(p => p.id === this.filterState.partnerId);
 
     return `
       <!-- Stats Summary -->
@@ -79,30 +130,193 @@ export class PaymentRequestsView extends BaseComponent {
         </div>
       </div>
 
-      <!-- Action Header -->
-      <div class="action-header">
-        <div class="filter-group">
-          <button class="btn btn-sm ${this.currentStatusFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}" data-req-filter="ALL">
-            Tất Cả (${allRequests.length})
-          </button>
-          <button class="btn btn-sm ${this.currentStatusFilter === PAYMENT_REQUEST_STATUS.PENDING ? 'btn-primary' : 'btn-secondary'}" data-req-filter="${PAYMENT_REQUEST_STATUS.PENDING}">
-            <span class="badge-dot" style="background: var(--warning-500);"></span>
-            Chờ Duyệt (${countPending})
-          </button>
-          <button class="btn btn-sm ${this.currentStatusFilter === PAYMENT_REQUEST_STATUS.APPROVED ? 'btn-primary' : 'btn-secondary'}" data-req-filter="${PAYMENT_REQUEST_STATUS.APPROVED}">
-            <span class="badge-dot" style="background: var(--primary-500);"></span>
-            Đã Duyệt (${countApproved})
-          </button>
-          <button class="btn btn-sm ${this.currentStatusFilter === PAYMENT_REQUEST_STATUS.PAID ? 'btn-primary' : 'btn-secondary'}" data-req-filter="${PAYMENT_REQUEST_STATUS.PAID}">
-            <span class="badge-dot" style="background: var(--success-500);"></span>
-            Đã Thanh Toán (${countPaid})
-          </button>
+      <!-- Modern Filter Card -->
+      <div class="filter-card">
+        <div class="filter-toolbar">
+          <div class="filter-left">
+            <!-- Quick Status Pills -->
+            <button class="btn btn-sm ${this.filterState.status === 'ALL' ? 'btn-primary' : 'btn-secondary'}" data-req-filter="ALL">
+              Tất Cả (${allRequests.length})
+            </button>
+            <button class="btn btn-sm ${this.filterState.status === PAYMENT_REQUEST_STATUS.PENDING ? 'btn-primary' : 'btn-secondary'}" data-req-filter="${PAYMENT_REQUEST_STATUS.PENDING}">
+              <span class="badge-dot" style="background: var(--warning-500);"></span>
+              Chờ Duyệt (${countPending})
+            </button>
+            <button class="btn btn-sm ${this.filterState.status === PAYMENT_REQUEST_STATUS.APPROVED ? 'btn-primary' : 'btn-secondary'}" data-req-filter="${PAYMENT_REQUEST_STATUS.APPROVED}">
+              <span class="badge-dot" style="background: var(--primary-500);"></span>
+              Đã Duyệt (${countApproved})
+            </button>
+            <button class="btn btn-sm ${this.filterState.status === PAYMENT_REQUEST_STATUS.PAID ? 'btn-primary' : 'btn-secondary'}" data-req-filter="${PAYMENT_REQUEST_STATUS.PAID}">
+              <span class="badge-dot" style="background: var(--success-500);"></span>
+              Đã Chi (${countPaid})
+            </button>
+
+            <!-- Search box in toolbar -->
+            <div class="filter-search-box">
+              <i data-lucide="search"></i>
+              <input type="text" class="filter-search-input" id="req-filter-search" placeholder="Tìm số ĐNTT, đối tác, người lập..." value="${escapeHtml(this.filterState.searchQuery)}">
+            </div>
+          </div>
+
+          <div class="filter-right">
+            <!-- Nút bật/tắt bộ lọc nâng cao -->
+            <button class="filter-btn-toggle ${this.filterState.isAdvancedOpen ? 'active' : ''}" id="btn-toggle-req-filter">
+              <i data-lucide="sliders-horizontal"></i>
+              <span>Bộ Lọc Nâng Cao</span>
+              ${activeFilterCount > 0 ? `<span class="filter-badge-count">${activeFilterCount}</span>` : ''}
+            </button>
+
+            ${activeFilterCount > 0 ? `
+              <button class="filter-btn-reset" id="btn-reset-req-filter" title="Xóa tất cả bộ lọc về mặc định">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Đặt Lại</span>
+              </button>
+            ` : ''}
+
+            <button class="btn btn-primary btn-sm" id="btn-add-payment-request">
+              <i data-lucide="plus-circle"></i>
+              <span>Lập Đề Nghị Thanh Toán</span>
+            </button>
+          </div>
         </div>
 
-        <button class="btn btn-primary" id="btn-add-payment-request">
-          <i data-lucide="plus-circle"></i>
-          <span>Lập Giấy Đề Nghị Thanh Toán</span>
-        </button>
+        <!-- Khung Bộ Lọc Nâng Cao (Collapsible Drawer) -->
+        <div class="filter-drawer ${this.filterState.isAdvancedOpen ? 'open' : ''}" id="req-filter-drawer">
+          <div class="filter-grid">
+            <!-- 1. Chọn Đối tác / Đơn vị thụ hưởng -->
+            <div class="filter-field">
+              <label class="filter-field-label">Đơn Vị Thụ Hưởng (Đối Tác)</label>
+              <select class="filter-field-control" id="req-filter-partner">
+                <option value="ALL">-- Tất cả đơn vị thụ hưởng --</option>
+                ${state.partners.map(p => `
+                  <option value="${p.id}" ${this.filterState.partnerId === p.id ? 'selected' : ''}>
+                    ${escapeHtml(p.name)} (${p.code || p.id})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- 2. Hình thức chi -->
+            <div class="filter-field">
+              <label class="filter-field-label">Hình Thức Chi Trả</label>
+              <select class="filter-field-control" id="req-filter-method">
+                <option value="ALL" ${this.filterState.paymentMethod === 'ALL' ? 'selected' : ''}>Tất cả hình thức</option>
+                <option value="${PAYMENT_METHODS.CASH}" ${this.filterState.paymentMethod === PAYMENT_METHODS.CASH ? 'selected' : ''}>💵 Tiền mặt (Phiếu chi)</option>
+                <option value="${PAYMENT_METHODS.BANK}" ${this.filterState.paymentMethod === PAYMENT_METHODS.BANK ? 'selected' : ''}>🏦 Chuyển khoản (Ủy nhiệm chi)</option>
+              </select>
+            </div>
+
+            <!-- 3. Lọc theo Khoảng thời gian -->
+            <div class="filter-field" style="grid-column: span 2;">
+              <div class="flex items-center justify-between">
+                <label class="filter-field-label">Khoảng Thời Gian</label>
+                <div class="flex items-center gap-2">
+                  <label style="font-size: 0.725rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="req-date-type" value="requestDate" ${this.filterState.dateType === 'requestDate' ? 'checked' : ''}> Ngày lập
+                  </label>
+                  <label style="font-size: 0.725rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="req-date-type" value="deadlineDate" ${this.filterState.dateType === 'deadlineDate' ? 'checked' : ''}> Hạn thanh toán
+                  </label>
+                </div>
+              </div>
+
+              <div class="filter-date-group">
+                <input type="date" class="filter-field-control filter-date-input" id="req-filter-from-date" value="${this.filterState.fromDate}">
+                <span style="color: var(--text-muted);">-</span>
+                <input type="date" class="filter-field-control filter-date-input" id="req-filter-to-date" value="${this.filterState.toDate}">
+              </div>
+
+              <!-- Quick Date Presets -->
+              <div class="date-presets-row">
+                ${DATE_PRESETS.map(p => `
+                  <button type="button" class="preset-btn ${this.filterState.datePreset === p.id ? 'active' : ''}" data-req-preset="${p.id}">
+                    ${p.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- 4. Khoảng số tiền đề nghị (Min - Max) -->
+            <div class="filter-field">
+              <label class="filter-field-label">Số Tiền Đề Nghị (VNĐ)</label>
+              <div style="display: flex; gap: var(--space-2); align-items: center;">
+                <input type="number" class="filter-field-control" id="req-filter-min-amount" placeholder="Tối thiểu" value="${this.filterState.minAmount}">
+                <span style="color: var(--text-muted);">-</span>
+                <input type="number" class="filter-field-control" id="req-filter-max-amount" placeholder="Tối đa" value="${this.filterState.maxAmount}">
+              </div>
+            </div>
+
+            <!-- 5. Tiêu chí sắp xếp -->
+            <div class="filter-field">
+              <label class="filter-field-label">Sắp Xếp Theo</label>
+              <select class="filter-field-control" id="req-filter-sort-by">
+                <option value="requestDate" ${this.filterState.sortBy === 'requestDate' ? 'selected' : ''}>Ngày lập đề nghị</option>
+                <option value="deadlineDate" ${this.filterState.sortBy === 'deadlineDate' ? 'selected' : ''}>Hạn thanh toán</option>
+                <option value="amount" ${this.filterState.sortBy === 'amount' ? 'selected' : ''}>Số tiền đề nghị</option>
+                <option value="requestNumber" ${this.filterState.sortBy === 'requestNumber' ? 'selected' : ''}>Số ĐNTT</option>
+              </select>
+            </div>
+
+            <!-- 6. Thứ tự sắp xếp -->
+            <div class="filter-field">
+              <label class="filter-field-label">Thứ Tự</label>
+              <select class="filter-field-control" id="req-filter-sort-order">
+                <option value="desc" ${this.filterState.sortOrder === 'desc' ? 'selected' : ''}>Mới nhất / Lớn nhất trước</option>
+                <option value="asc" ${this.filterState.sortOrder === 'asc' ? 'selected' : ''}>Cũ nhất / Nhỏ nhất trước</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Active Chips Summary Bar -->
+        ${activeFilterCount > 0 ? `
+          <div class="filter-summary-bar">
+            <span class="filter-summary-label"><i data-lucide="filter" style="width: 12px; height: 12px;"></i> Đang lọc:</span>
+            ${this.filterState.status !== 'ALL' ? `
+              <span class="filter-chip">
+                Trạng thái: ${
+                  this.filterState.status === PAYMENT_REQUEST_STATUS.PENDING ? 'Chờ Phê Duyệt' :
+                  this.filterState.status === PAYMENT_REQUEST_STATUS.APPROVED ? 'Đã Duyệt Chi' :
+                  this.filterState.status === PAYMENT_REQUEST_STATUS.PAID ? 'Đã Chi Tiền' : 'Bị Từ Chối'
+                }
+                <span class="filter-chip-remove" data-clear-key="status">&times;</span>
+              </span>
+            ` : ''}
+            ${selectedPartner ? `
+              <span class="filter-chip">
+                Đơn vị: ${escapeHtml(selectedPartner.name)}
+                <span class="filter-chip-remove" data-clear-key="partnerId">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.paymentMethod !== 'ALL' ? `
+              <span class="filter-chip">
+                Hình thức: ${this.filterState.paymentMethod === PAYMENT_METHODS.CASH ? 'Tiền mặt' : 'Chuyển khoản'}
+                <span class="filter-chip-remove" data-clear-key="paymentMethod">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.fromDate || this.filterState.toDate ? `
+              <span class="filter-chip">
+                ${this.filterState.dateType === 'deadlineDate' ? 'Hạn chi' : 'Ngày lập'}: ${formatDate(this.filterState.fromDate) || '...'} → ${formatDate(this.filterState.toDate) || '...'}
+                <span class="filter-chip-remove" data-clear-key="dateRange">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.minAmount !== '' || this.filterState.maxAmount !== '' ? `
+              <span class="filter-chip">
+                Tiền: ${formatCurrency(this.filterState.minAmount || 0)} - ${this.filterState.maxAmount ? formatCurrency(this.filterState.maxAmount) : '∞'}
+                <span class="filter-chip-remove" data-clear-key="amountRange">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.searchQuery ? `
+              <span class="filter-chip">
+                Tìm kiếm: "${escapeHtml(this.filterState.searchQuery)}"
+                <span class="filter-chip-remove" data-clear-key="searchQuery">&times;</span>
+              </span>
+            ` : ''}
+            <span class="font-mono text-muted" style="margin-left: auto; font-size: 0.725rem;">
+              Hiển thị <b>${filteredRequests.length}</b> / ${allRequests.length} ĐNTT
+            </span>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Payment Requests Table -->
@@ -126,7 +340,13 @@ export class PaymentRequestsView extends BaseComponent {
                 <tr>
                   <td colspan="8" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
                     <i data-lucide="clipboard-list" style="width: 36px; height: 36px; margin-bottom: 8px; color: var(--text-muted); opacity: 0.5;"></i>
-                    <p>Không có Giấy Đề Nghị Thanh Toán nào.</p>
+                    <p>Không có Giấy Đề Nghị Thanh Toán nào phù hợp với bộ lọc.</p>
+                    ${activeFilterCount > 0 ? `
+                      <button class="btn btn-secondary btn-sm" id="btn-reset-req-empty" style="margin-top: 8px;">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span>Xóa Bộ Lọc</span>
+                      </button>
+                    ` : ''}
                   </td>
                 </tr>
               ` : filteredRequests.map(r => {
@@ -208,21 +428,153 @@ export class PaymentRequestsView extends BaseComponent {
   }
 
   afterRender(state) {
-    // 1. Filter buttons
+    // 1. Status Filter buttons
     qsa("[data-req-filter]", this.container).forEach(btn => {
       btn.onclick = () => {
-        this.currentStatusFilter = btn.dataset.reqFilter;
+        this.filterState.status = btn.dataset.reqFilter;
         this.mount(stateStore.state);
       };
     });
 
-    // 2. Nút Thêm mới
+    // 2. Search input (debounced)
+    const searchInput = qs("#req-filter-search", this.container);
+    if (searchInput) {
+      let debounceTimer = null;
+      searchInput.oninput = (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.filterState.searchQuery = e.target.value;
+          this.mount(stateStore.state);
+        }, 200);
+      };
+    }
+
+    // 3. Toggle Drawer
+    const toggleBtn = qs("#btn-toggle-req-filter", this.container);
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        this.filterState.isAdvancedOpen = !this.filterState.isAdvancedOpen;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 4. Reset Button
+    const resetBtn = qs("#btn-reset-req-filter", this.container) || qs("#btn-reset-req-empty", this.container);
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        this.filterState = { ...this.defaultFilterState, isAdvancedOpen: this.filterState.isAdvancedOpen };
+        this.mount(stateStore.state);
+        Toast.info("Đã đặt lại bộ lọc đề nghị thanh toán");
+      };
+    }
+
+    // 5. Partner select
+    const selectPartner = qs("#req-filter-partner", this.container);
+    if (selectPartner) {
+      selectPartner.onchange = (e) => {
+        this.filterState.partnerId = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 6. Payment method select
+    const selectMethod = qs("#req-filter-method", this.container);
+    if (selectMethod) {
+      selectMethod.onchange = (e) => {
+        this.filterState.paymentMethod = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 7. Date type radio
+    qsa("input[name='req-date-type']", this.container).forEach(radio => {
+      radio.onchange = (e) => {
+        this.filterState.dateType = e.target.value;
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 8. Date Range inputs
+    const fromDateInput = qs("#req-filter-from-date", this.container);
+    const toDateInput = qs("#req-filter-to-date", this.container);
+    const handleDateChange = () => {
+      this.filterState.fromDate = fromDateInput ? fromDateInput.value : "";
+      this.filterState.toDate = toDateInput ? toDateInput.value : "";
+      this.filterState.datePreset = "custom";
+      this.mount(stateStore.state);
+    };
+    if (fromDateInput) fromDateInput.onchange = handleDateChange;
+    if (toDateInput) toDateInput.onchange = handleDateChange;
+
+    // 9. Date Presets buttons
+    qsa("[data-req-preset]", this.container).forEach(btn => {
+      btn.onclick = () => {
+        const preset = btn.dataset.reqPreset;
+        this.filterState.datePreset = preset;
+        const range = getPresetDateRange(preset);
+        this.filterState.fromDate = range.fromDate;
+        this.filterState.toDate = range.toDate;
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 10. Amount Range inputs
+    const minAmountInput = qs("#req-filter-min-amount", this.container);
+    const maxAmountInput = qs("#req-filter-max-amount", this.container);
+    let amountTimer = null;
+    const handleAmountChange = () => {
+      clearTimeout(amountTimer);
+      amountTimer = setTimeout(() => {
+        this.filterState.minAmount = minAmountInput ? minAmountInput.value : "";
+        this.filterState.maxAmount = maxAmountInput ? maxAmountInput.value : "";
+        this.mount(stateStore.state);
+      }, 300);
+    };
+    if (minAmountInput) minAmountInput.oninput = handleAmountChange;
+    if (maxAmountInput) maxAmountInput.oninput = handleAmountChange;
+
+    // 11. Sort select
+    const sortBySelect = qs("#req-filter-sort-by", this.container);
+    if (sortBySelect) {
+      sortBySelect.onchange = (e) => {
+        this.filterState.sortBy = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    const sortOrderSelect = qs("#req-filter-sort-order", this.container);
+    if (sortOrderSelect) {
+      sortOrderSelect.onchange = (e) => {
+        this.filterState.sortOrder = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 12. Filter Chips remove click
+    qsa("[data-clear-key]", this.container).forEach(chip => {
+      chip.onclick = () => {
+        const key = chip.dataset.clearKey;
+        if (key === 'dateRange') {
+          this.filterState.fromDate = '';
+          this.filterState.toDate = '';
+          this.filterState.datePreset = 'all';
+        } else if (key === 'amountRange') {
+          this.filterState.minAmount = '';
+          this.filterState.maxAmount = '';
+        } else if (key in this.filterState) {
+          this.filterState[key] = this.defaultFilterState[key];
+        }
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 13. Nút Thêm mới
     const addBtn = qs("#btn-add-payment-request", this.container);
     if (addBtn) {
       addBtn.onclick = () => this.showPaymentRequestModal();
     }
 
-    // 3. In Giấy Đề Nghị Thanh Toán
+    // 14. In Giấy Đề Nghị Thanh Toán
     qsa(".btn-print-request", this.container).forEach(btn => {
       btn.onclick = () => {
         const req = stateStore.state.paymentRequests.find(r => r.id === btn.dataset.id);

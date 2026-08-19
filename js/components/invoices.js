@@ -11,82 +11,315 @@ import { ExportService } from '../services/export-service.js';
 import { formatCurrency, formatDate, renderInvoiceStatusBadge, toInputDateFormat, parseCurrency, formatCurrencyNumber } from '../utils/formatters.js';
 import { INVOICE_TYPES, INVOICE_STATUS, PAYMENT_METHODS, getVoucherType, VOUCHER_TYPE_LABELS, VOUCHER_TYPE_PREFIXES } from '../config.js';
 import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
+import { isDateInRange, isAmountInRange, countActiveFilters, sortDataList, getPresetDateRange, DATE_PRESETS } from '../utils/filter-helpers.js';
 
 export class InvoicesView extends BaseComponent {
   constructor(containerId) {
     super(containerId);
-    this.currentStatusTab = "ALL";
-    this.currentTypeFilter = "ALL";
+    this.defaultFilterState = {
+      statusTab: "ALL",
+      type: "ALL",
+      partnerId: "ALL",
+      paymentMethod: "ALL",
+      dateType: "issueDate", // "issueDate" | "dueDate"
+      datePreset: "all",
+      fromDate: "",
+      toDate: "",
+      minAmount: "",
+      maxAmount: "",
+      sortBy: "issueDate",
+      sortOrder: "desc",
+      searchQuery: "",
+      isAdvancedOpen: false
+    };
+    this.filterState = { ...this.defaultFilterState };
   }
 
   render(state) {
-    let filteredInvoices = state.invoices;
+    let filteredInvoices = state.invoices || [];
 
-    // Lọc theo Tab trạng thái
-    if (this.currentStatusTab !== "ALL") {
-      filteredInvoices = filteredInvoices.filter(inv => inv.status === this.currentStatusTab);
+    // 1. Lọc theo Tab trạng thái
+    if (this.filterState.statusTab !== "ALL") {
+      filteredInvoices = filteredInvoices.filter(inv => inv.status === this.filterState.statusTab);
     }
 
-    // Lọc theo Loại (Phải thu / Phải trả)
-    if (this.currentTypeFilter !== "ALL") {
-      filteredInvoices = filteredInvoices.filter(inv => inv.type === this.currentTypeFilter);
+    // 2. Lọc theo Loại (Phải thu / Phải trả)
+    if (this.filterState.type !== "ALL") {
+      filteredInvoices = filteredInvoices.filter(inv => inv.type === this.filterState.type);
     }
 
-    // Lọc theo tìm kiếm
-    if (state.searchQuery) {
-      const q = state.searchQuery.toLowerCase();
+    // 3. Lọc theo Đối tác
+    if (this.filterState.partnerId !== "ALL") {
+      filteredInvoices = filteredInvoices.filter(inv => inv.partnerId === this.filterState.partnerId);
+    }
+
+    // 4. Lọc theo Hình thức thanh toán
+    if (this.filterState.paymentMethod !== "ALL") {
+      filteredInvoices = filteredInvoices.filter(inv => inv.paymentMethod === this.filterState.paymentMethod);
+    }
+
+    // 5. Lọc theo Khoảng ngày (Ngày phát sinh hoặc Ngày hạn nợ)
+    if (this.filterState.fromDate || this.filterState.toDate) {
+      filteredInvoices = filteredInvoices.filter(inv => {
+        const targetDate = this.filterState.dateType === "dueDate" ? inv.dueDate : inv.issueDate;
+        return isDateInRange(targetDate, this.filterState.fromDate, this.filterState.toDate);
+      });
+    }
+
+    // 6. Lọc theo Khoảng số tiền (Tổng tiền hóa đơn)
+    if (this.filterState.minAmount !== "" || this.filterState.maxAmount !== "") {
       filteredInvoices = filteredInvoices.filter(inv =>
-        (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(q)) ||
-        (inv.partnerName && inv.partnerName.toLowerCase().includes(q)) ||
-        (inv.notes && inv.notes.toLowerCase().includes(q))
+        isAmountInRange(inv.totalAmount || 0, this.filterState.minAmount, this.filterState.maxAmount)
       );
     }
 
+    // 7. Lọc theo tìm kiếm
+    const effectiveSearch = (this.filterState.searchQuery || state.searchQuery || "").trim().toLowerCase();
+    if (effectiveSearch) {
+      filteredInvoices = filteredInvoices.filter(inv =>
+        (inv.invoiceNumber && inv.invoiceNumber.toLowerCase().includes(effectiveSearch)) ||
+        (inv.partnerName && inv.partnerName.toLowerCase().includes(effectiveSearch)) ||
+        (inv.itemName && inv.itemName.toLowerCase().includes(effectiveSearch)) ||
+        (inv.title && inv.title.toLowerCase().includes(effectiveSearch)) ||
+        (inv.notes && inv.notes.toLowerCase().includes(effectiveSearch))
+      );
+    }
+
+    // 8. Sắp xếp danh sách
+    if (this.filterState.sortBy === "remainingAmount") {
+      filteredInvoices = [...filteredInvoices].sort((a, b) => {
+        const remA = Math.max(0, (Number(a.totalAmount) || 0) - (Number(a.paidAmount) || 0));
+        const remB = Math.max(0, (Number(b.totalAmount) || 0) - (Number(b.paidAmount) || 0));
+        return this.filterState.sortOrder === "desc" ? remB - remA : remA - remB;
+      });
+    } else {
+      filteredInvoices = sortDataList(filteredInvoices, this.filterState.sortBy, this.filterState.sortOrder);
+    }
+
+    const activeFilterCount = countActiveFilters(this.filterState, this.defaultFilterState);
+
+    const totalCount = state.invoices.length;
     const overdueCount = state.invoices.filter(inv => inv.status === INVOICE_STATUS.OVERDUE).length;
+    const unpaidCount = state.invoices.filter(inv => inv.status === INVOICE_STATUS.UNPAID).length;
+    const partialCount = state.invoices.filter(inv => inv.status === INVOICE_STATUS.PARTIAL).length;
+    const paidCount = state.invoices.filter(inv => inv.status === INVOICE_STATUS.PAID).length;
+
+    const selectedPartner = state.partners.find(p => p.id === this.filterState.partnerId);
 
     return `
       <!-- Action Header & Tabs -->
       <div class="tabs-nav">
-        <button class="tab-btn ${this.currentStatusTab === 'ALL' ? 'active' : ''}" data-status-tab="ALL">
-          Tất Cả (${state.invoices.length})
+        <button class="tab-btn ${this.filterState.statusTab === 'ALL' ? 'active' : ''}" data-status-tab="ALL">
+          Tất Cả (${totalCount})
         </button>
-        <button class="tab-btn ${this.currentStatusTab === INVOICE_STATUS.OVERDUE ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.OVERDUE}">
+        <button class="tab-btn ${this.filterState.statusTab === INVOICE_STATUS.OVERDUE ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.OVERDUE}">
           Quá Hạn <span class="badge badge-overdue" style="font-size: 0.7rem;">${overdueCount}</span>
         </button>
-        <button class="tab-btn ${this.currentStatusTab === INVOICE_STATUS.UNPAID ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.UNPAID}">
-          Chưa Thanh Toán
+        <button class="tab-btn ${this.filterState.statusTab === INVOICE_STATUS.UNPAID ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.UNPAID}">
+          Chưa Thanh Toán (${unpaidCount})
         </button>
-        <button class="tab-btn ${this.currentStatusTab === INVOICE_STATUS.PARTIAL ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.PARTIAL}">
-          Trả Một Phần
+        <button class="tab-btn ${this.filterState.statusTab === INVOICE_STATUS.PARTIAL ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.PARTIAL}">
+          Trả Một Phần (${partialCount})
         </button>
-        <button class="tab-btn ${this.currentStatusTab === INVOICE_STATUS.PAID ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.PAID}">
-          Đã Hoàn Tất
+        <button class="tab-btn ${this.filterState.statusTab === INVOICE_STATUS.PAID ? 'active' : ''}" data-status-tab="${INVOICE_STATUS.PAID}">
+          Đã Hoàn Tất (${paidCount})
         </button>
       </div>
 
-      <div class="action-header">
-        <div class="filter-group">
-          <select class="form-select" id="select-invoice-type" style="height: 36px;">
-            <option value="ALL" ${this.currentTypeFilter === 'ALL' ? 'selected' : ''}>Tất cả loại chứng từ</option>
-            <option value="${INVOICE_TYPES.RECEIVABLE}" ${this.currentTypeFilter === INVOICE_TYPES.RECEIVABLE ? 'selected' : ''}>Phải Thu (Bán hàng)</option>
-            <option value="${INVOICE_TYPES.PAYABLE}" ${this.currentTypeFilter === INVOICE_TYPES.PAYABLE ? 'selected' : ''}>Phải Trả (Mua hàng)</option>
-          </select>
+      <!-- Modern Filter Card -->
+      <div class="filter-card">
+        <div class="filter-toolbar">
+          <div class="filter-left">
+            <!-- Loại Hóa Đơn Quick Select -->
+            <select class="form-select" id="invoice-filter-type" style="height: 34px; width: 175px; font-size: 0.8125rem;">
+              <option value="ALL" ${this.filterState.type === 'ALL' ? 'selected' : ''}>Tất cả loại chứng từ</option>
+              <option value="${INVOICE_TYPES.RECEIVABLE}" ${this.filterState.type === INVOICE_TYPES.RECEIVABLE ? 'selected' : ''}>Phải Thu (Bán hàng)</option>
+              <option value="${INVOICE_TYPES.PAYABLE}" ${this.filterState.type === INVOICE_TYPES.PAYABLE ? 'selected' : ''}>Phải Trả (Mua hàng)</option>
+            </select>
+
+            <!-- Search box in toolbar -->
+            <div class="filter-search-box">
+              <i data-lucide="search"></i>
+              <input type="text" class="filter-search-input" id="invoice-filter-search" placeholder="Tìm số HĐ, đối tác, hàng hóa..." value="${escapeHtml(this.filterState.searchQuery)}">
+            </div>
+          </div>
+
+          <div class="filter-right">
+            <!-- Nút bật/tắt bộ lọc nâng cao -->
+            <button class="filter-btn-toggle ${this.filterState.isAdvancedOpen ? 'active' : ''}" id="btn-toggle-invoice-filter">
+              <i data-lucide="sliders-horizontal"></i>
+              <span>Bộ Lọc Nâng Cao</span>
+              ${activeFilterCount > 0 ? `<span class="filter-badge-count">${activeFilterCount}</span>` : ''}
+            </button>
+
+            ${activeFilterCount > 0 ? `
+              <button class="filter-btn-reset" id="btn-reset-invoice-filter" title="Xóa tất cả bộ lọc về mặc định">
+                <i data-lucide="rotate-ccw"></i>
+                <span>Đặt Lại</span>
+              </button>
+            ` : ''}
+
+            <div class="flex gap-2">
+              <button class="btn btn-secondary btn-sm" id="btn-import-invoices-excel" title="Nhập hóa đơn / công nợ hàng loạt từ file Excel">
+                <i data-lucide="file-spreadsheet"></i>
+                <span>Nhập Excel</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btn-export-invoices">
+                <i data-lucide="download"></i>
+                <span>Xuất Excel</span>
+              </button>
+              <button class="btn btn-primary btn-sm" id="btn-add-invoice">
+                <i data-lucide="plus-circle"></i>
+                <span>Tạo Hóa Đơn Mới</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="flex gap-2">
-          <button class="btn btn-secondary" id="btn-import-invoices-excel" title="Nhập hóa đơn / công nợ hàng loạt từ file Excel">
-            <i data-lucide="file-spreadsheet"></i>
-            <span>Nhập Từ Excel</span>
-          </button>
-          <button class="btn btn-secondary" id="btn-export-invoices">
-            <i data-lucide="download"></i>
-            <span>Xuất Excel</span>
-          </button>
-          <button class="btn btn-primary" id="btn-add-invoice">
-            <i data-lucide="plus-circle"></i>
-            <span>Tạo Hóa Đơn Mới</span>
-          </button>
+        <!-- Khung Bộ Lọc Nâng Cao (Collapsible Drawer) -->
+        <div class="filter-drawer ${this.filterState.isAdvancedOpen ? 'open' : ''}" id="invoice-filter-drawer">
+          <div class="filter-grid">
+            <!-- 1. Chọn Đối tác -->
+            <div class="filter-field">
+              <label class="filter-field-label">Đối Tác (Khách hàng / NCC)</label>
+              <select class="filter-field-control" id="invoice-filter-partner">
+                <option value="ALL">-- Tất cả đối tác --</option>
+                ${state.partners.map(p => `
+                  <option value="${p.id}" ${this.filterState.partnerId === p.id ? 'selected' : ''}>
+                    ${escapeHtml(p.name)} (${p.code || p.id})
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+
+            <!-- 2. Hình thức thanh toán -->
+            <div class="filter-field">
+              <label class="filter-field-label">Hình Thức Thanh Toán</label>
+              <select class="filter-field-control" id="invoice-filter-method">
+                <option value="ALL" ${this.filterState.paymentMethod === 'ALL' ? 'selected' : ''}>Tất cả hình thức</option>
+                <option value="${PAYMENT_METHODS.CASH}" ${this.filterState.paymentMethod === PAYMENT_METHODS.CASH ? 'selected' : ''}>Tiền mặt (Quỹ)</option>
+                <option value="${PAYMENT_METHODS.BANK}" ${this.filterState.paymentMethod === PAYMENT_METHODS.BANK ? 'selected' : ''}>Chuyển khoản (Ngân hàng)</option>
+              </select>
+            </div>
+
+            <!-- 3. Lọc theo Thời gian (Date Range) -->
+            <div class="filter-field" style="grid-column: span 2;">
+              <div class="flex items-center justify-between">
+                <label class="filter-field-label">Khoảng Thời Gian</label>
+                <div class="flex items-center gap-2">
+                  <label style="font-size: 0.725rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="invoice-date-type" value="issueDate" ${this.filterState.dateType === 'issueDate' ? 'checked' : ''}> Ngày phát sinh
+                  </label>
+                  <label style="font-size: 0.725rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="invoice-date-type" value="dueDate" ${this.filterState.dateType === 'dueDate' ? 'checked' : ''}> Hạn nợ
+                  </label>
+                </div>
+              </div>
+
+              <div class="filter-date-group">
+                <input type="date" class="filter-field-control filter-date-input" id="invoice-filter-from-date" value="${this.filterState.fromDate}">
+                <span style="color: var(--text-muted);">-</span>
+                <input type="date" class="filter-field-control filter-date-input" id="invoice-filter-to-date" value="${this.filterState.toDate}">
+              </div>
+
+              <!-- Quick Date Presets -->
+              <div class="date-presets-row">
+                ${DATE_PRESETS.map(p => `
+                  <button type="button" class="preset-btn ${this.filterState.datePreset === p.id ? 'active' : ''}" data-invoice-preset="${p.id}">
+                    ${p.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- 4. Khoảng số tiền (Min - Max) -->
+            <div class="filter-field">
+              <label class="filter-field-label">Tổng Tiền Hóa Đơn (VNĐ)</label>
+              <div style="display: flex; gap: var(--space-2); align-items: center;">
+                <input type="number" class="filter-field-control" id="invoice-filter-min-amount" placeholder="Tối thiểu" value="${this.filterState.minAmount}">
+                <span style="color: var(--text-muted);">-</span>
+                <input type="number" class="filter-field-control" id="invoice-filter-max-amount" placeholder="Tối đa" value="${this.filterState.maxAmount}">
+              </div>
+            </div>
+
+            <!-- 5. Tiêu chí sắp xếp -->
+            <div class="filter-field">
+              <label class="filter-field-label">Sắp Xếp Theo</label>
+              <select class="filter-field-control" id="invoice-filter-sort-by">
+                <option value="issueDate" ${this.filterState.sortBy === 'issueDate' ? 'selected' : ''}>Ngày phát sinh</option>
+                <option value="dueDate" ${this.filterState.sortBy === 'dueDate' ? 'selected' : ''}>Hạn thanh toán</option>
+                <option value="totalAmount" ${this.filterState.sortBy === 'totalAmount' ? 'selected' : ''}>Tổng tiền hóa đơn</option>
+                <option value="remainingAmount" ${this.filterState.sortBy === 'remainingAmount' ? 'selected' : ''}>Số tiền còn nợ</option>
+                <option value="invoiceNumber" ${this.filterState.sortBy === 'invoiceNumber' ? 'selected' : ''}>Số hóa đơn</option>
+              </select>
+            </div>
+
+            <!-- 6. Thứ tự sắp xếp -->
+            <div class="filter-field">
+              <label class="filter-field-label">Thứ Tự</label>
+              <select class="filter-field-control" id="invoice-filter-sort-order">
+                <option value="desc" ${this.filterState.sortOrder === 'desc' ? 'selected' : ''}>Mới nhất / Lớn nhất trước</option>
+                <option value="asc" ${this.filterState.sortOrder === 'asc' ? 'selected' : ''}>Cũ nhất / Nhỏ nhất trước</option>
+              </select>
+            </div>
+          </div>
         </div>
+
+        <!-- Filter Active Chips Summary Bar -->
+        ${activeFilterCount > 0 ? `
+          <div class="filter-summary-bar">
+            <span class="filter-summary-label"><i data-lucide="filter" style="width: 12px; height: 12px;"></i> Đang lọc:</span>
+            ${this.filterState.statusTab !== 'ALL' ? `
+              <span class="filter-chip">
+                Trạng thái: ${
+                  this.filterState.statusTab === INVOICE_STATUS.OVERDUE ? 'Quá Hạn' :
+                  this.filterState.statusTab === INVOICE_STATUS.UNPAID ? 'Chưa Thanh Toán' :
+                  this.filterState.statusTab === INVOICE_STATUS.PARTIAL ? 'Trả Một Phần' : 'Đã Hoàn Tất'
+                }
+                <span class="filter-chip-remove" data-clear-key="statusTab">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.type !== 'ALL' ? `
+              <span class="filter-chip">
+                Loại: ${this.filterState.type === INVOICE_TYPES.RECEIVABLE ? 'Phải Thu (Bán hàng)' : 'Phải Trả (Mua hàng)'}
+                <span class="filter-chip-remove" data-clear-key="type">&times;</span>
+              </span>
+            ` : ''}
+            ${selectedPartner ? `
+              <span class="filter-chip">
+                Đối tác: ${escapeHtml(selectedPartner.name)}
+                <span class="filter-chip-remove" data-clear-key="partnerId">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.paymentMethod !== 'ALL' ? `
+              <span class="filter-chip">
+                Hình thức: ${this.filterState.paymentMethod === PAYMENT_METHODS.CASH ? 'Tiền mặt' : 'Chuyển khoản'}
+                <span class="filter-chip-remove" data-clear-key="paymentMethod">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.fromDate || this.filterState.toDate ? `
+              <span class="filter-chip">
+                ${this.filterState.dateType === 'dueDate' ? 'Hạn nợ' : 'Ngày lập'}: ${formatDate(this.filterState.fromDate) || '...'} → ${formatDate(this.filterState.toDate) || '...'}
+                <span class="filter-chip-remove" data-clear-key="dateRange">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.minAmount !== '' || this.filterState.maxAmount !== '' ? `
+              <span class="filter-chip">
+                Tiền: ${formatCurrency(this.filterState.minAmount || 0)} - ${this.filterState.maxAmount ? formatCurrency(this.filterState.maxAmount) : '∞'}
+                <span class="filter-chip-remove" data-clear-key="amountRange">&times;</span>
+              </span>
+            ` : ''}
+            ${this.filterState.searchQuery ? `
+              <span class="filter-chip">
+                Tìm kiếm: "${escapeHtml(this.filterState.searchQuery)}"
+                <span class="filter-chip-remove" data-clear-key="searchQuery">&times;</span>
+              </span>
+            ` : ''}
+            <span class="font-mono text-muted" style="margin-left: auto; font-size: 0.725rem;">
+              Hiển thị <b>${filteredInvoices.length}</b> / ${state.invoices.length} hóa đơn
+            </span>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Invoices Data Table -->
@@ -113,7 +346,14 @@ export class InvoicesView extends BaseComponent {
               ${filteredInvoices.length === 0 ? `
                 <tr>
                   <td colspan="12" style="text-align: center; padding: var(--space-8); color: var(--text-muted);">
-                    Không có hóa đơn nào trong danh sách.
+                    <i data-lucide="file-text" style="width: 36px; height: 36px; margin-bottom: 8px; color: var(--text-muted); opacity: 0.5;"></i>
+                    <p>Không có hóa đơn nào phù hợp với bộ lọc.</p>
+                    ${activeFilterCount > 0 ? `
+                      <button class="btn btn-secondary btn-sm" id="btn-reset-invoice-empty" style="margin-top: 8px;">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span>Xóa Bộ Lọc</span>
+                      </button>
+                    ` : ''}
                   </td>
                 </tr>
               ` : filteredInvoices.map(inv => {
@@ -181,30 +421,162 @@ export class InvoicesView extends BaseComponent {
   }
 
   afterRender(state) {
-    // Tab status switch
+    // 1. Tab status switch
     qsa("[data-status-tab]", this.container).forEach(btn => {
       btn.onclick = () => {
-        this.currentStatusTab = btn.dataset.statusTab;
+        this.filterState.statusTab = btn.dataset.statusTab;
         this.mount(stateStore.state);
       };
     });
 
-    // Select type filter
-    const selectType = qs("#select-invoice-type", this.container);
+    // 2. Select type filter
+    const selectType = qs("#invoice-filter-type", this.container);
     if (selectType) {
       selectType.onchange = (e) => {
-        this.currentTypeFilter = e.target.value;
+        this.filterState.type = e.target.value;
         this.mount(stateStore.state);
       };
     }
 
-    // Import Invoices from Excel
+    // 3. Search input (debounced)
+    const searchInput = qs("#invoice-filter-search", this.container);
+    if (searchInput) {
+      let debounceTimer = null;
+      searchInput.oninput = (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.filterState.searchQuery = e.target.value;
+          this.mount(stateStore.state);
+        }, 200);
+      };
+    }
+
+    // 4. Toggle Drawer
+    const toggleBtn = qs("#btn-toggle-invoice-filter", this.container);
+    if (toggleBtn) {
+      toggleBtn.onclick = () => {
+        this.filterState.isAdvancedOpen = !this.filterState.isAdvancedOpen;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 5. Reset Button
+    const resetBtn = qs("#btn-reset-invoice-filter", this.container) || qs("#btn-reset-invoice-empty", this.container);
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        this.filterState = { ...this.defaultFilterState, isAdvancedOpen: this.filterState.isAdvancedOpen };
+        this.mount(stateStore.state);
+        Toast.info("Đã đặt lại bộ lọc hóa đơn");
+      };
+    }
+
+    // 6. Partner filter
+    const selectPartner = qs("#invoice-filter-partner", this.container);
+    if (selectPartner) {
+      selectPartner.onchange = (e) => {
+        this.filterState.partnerId = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 7. Payment method filter
+    const selectMethod = qs("#invoice-filter-method", this.container);
+    if (selectMethod) {
+      selectMethod.onchange = (e) => {
+        this.filterState.paymentMethod = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 8. Date type radio
+    qsa("input[name='invoice-date-type']", this.container).forEach(radio => {
+      radio.onchange = (e) => {
+        this.filterState.dateType = e.target.value;
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 9. Date Range inputs
+    const fromDateInput = qs("#invoice-filter-from-date", this.container);
+    const toDateInput = qs("#invoice-filter-to-date", this.container);
+    const handleDateChange = () => {
+      this.filterState.fromDate = fromDateInput ? fromDateInput.value : "";
+      this.filterState.toDate = toDateInput ? toDateInput.value : "";
+      this.filterState.datePreset = "custom";
+      this.mount(stateStore.state);
+    };
+    if (fromDateInput) fromDateInput.onchange = handleDateChange;
+    if (toDateInput) toDateInput.onchange = handleDateChange;
+
+    // 10. Date Presets buttons
+    qsa("[data-invoice-preset]", this.container).forEach(btn => {
+      btn.onclick = () => {
+        const preset = btn.dataset.invoicePreset;
+        this.filterState.datePreset = preset;
+        const range = getPresetDateRange(preset);
+        this.filterState.fromDate = range.fromDate;
+        this.filterState.toDate = range.toDate;
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 11. Amount Range inputs
+    const minAmountInput = qs("#invoice-filter-min-amount", this.container);
+    const maxAmountInput = qs("#invoice-filter-max-amount", this.container);
+    let amountTimer = null;
+    const handleAmountChange = () => {
+      clearTimeout(amountTimer);
+      amountTimer = setTimeout(() => {
+        this.filterState.minAmount = minAmountInput ? minAmountInput.value : "";
+        this.filterState.maxAmount = maxAmountInput ? maxAmountInput.value : "";
+        this.mount(stateStore.state);
+      }, 300);
+    };
+    if (minAmountInput) minAmountInput.oninput = handleAmountChange;
+    if (maxAmountInput) maxAmountInput.oninput = handleAmountChange;
+
+    // 12. Sort select
+    const sortBySelect = qs("#invoice-filter-sort-by", this.container);
+    if (sortBySelect) {
+      sortBySelect.onchange = (e) => {
+        this.filterState.sortBy = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    const sortOrderSelect = qs("#invoice-filter-sort-order", this.container);
+    if (sortOrderSelect) {
+      sortOrderSelect.onchange = (e) => {
+        this.filterState.sortOrder = e.target.value;
+        this.mount(stateStore.state);
+      };
+    }
+
+    // 13. Filter Chips remove click
+    qsa("[data-clear-key]", this.container).forEach(chip => {
+      chip.onclick = () => {
+        const key = chip.dataset.clearKey;
+        if (key === 'dateRange') {
+          this.filterState.fromDate = '';
+          this.filterState.toDate = '';
+          this.filterState.datePreset = 'all';
+        } else if (key === 'amountRange') {
+          this.filterState.minAmount = '';
+          this.filterState.maxAmount = '';
+        } else if (key in this.filterState) {
+          this.filterState[key] = this.defaultFilterState[key];
+        }
+        this.mount(stateStore.state);
+      };
+    });
+
+    // 14. Import Invoices from Excel
     const importExcelBtn = qs("#btn-import-invoices-excel", this.container);
     if (importExcelBtn) {
       importExcelBtn.onclick = () => this.showImportExcelModal();
     }
 
-    // Export Excel
+    // 15. Export Excel
     const exportBtn = qs("#btn-export-invoices", this.container);
     if (exportBtn) {
       exportBtn.onclick = () => {
@@ -213,13 +585,13 @@ export class InvoicesView extends BaseComponent {
       };
     }
 
-    // Add Invoice
+    // 16. Add Invoice
     const addBtn = qs("#btn-add-invoice", this.container);
     if (addBtn) {
       addBtn.onclick = () => this.showInvoiceModal();
     }
 
-    // Quick pay button
+    // 17. Quick pay button
     qsa(".btn-quick-pay", this.container).forEach(btn => {
       btn.onclick = () => {
         const inv = stateStore.state.invoices.find(i => i.id === btn.dataset.id);
@@ -227,7 +599,7 @@ export class InvoicesView extends BaseComponent {
       };
     });
 
-    // Edit Invoice
+    // 18. Edit Invoice
     qsa(".btn-edit-invoice", this.container).forEach(btn => {
       btn.onclick = () => {
         const inv = stateStore.state.invoices.find(i => i.id === btn.dataset.id);
@@ -235,7 +607,7 @@ export class InvoicesView extends BaseComponent {
       };
     });
 
-    // Delete Invoice
+    // 19. Delete Invoice
     qsa(".btn-delete-invoice", this.container).forEach(btn => {
       btn.onclick = () => {
         const inv = stateStore.state.invoices.find(i => i.id === btn.dataset.id);
