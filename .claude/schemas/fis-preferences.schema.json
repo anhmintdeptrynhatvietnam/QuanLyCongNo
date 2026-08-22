@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://fis-ai-kit.local/schemas/fis-preferences.schema.json",
+  "title": "FIS AI Kit Preferences",
+  "description": "Schema for .fis/config.yaml, the two-tier preference file. The project file at ./.fis/config.yaml overrides the same key in the user file at ~/.fis/config.yaml. Field names are snake_case. For the legacy .claude/.fisrc.json format see fis-config.schema.json.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [1],
+      "description": "Schema version this file was written against. Omit to track the current version."
+    },
+    "coding_level": {
+      "type": "integer",
+      "minimum": -1,
+      "maximum": 5,
+      "default": -1,
+      "description": "How much explanation you want in answers: -1 disabled, 0 eli5, 1 junior, 2 mid-level, 3 senior, 4 expert, 5 architect"
+    },
+    "privacy_block": {
+      "type": "boolean",
+      "default": true,
+      "description": "Block reads of files that usually hold secrets (.env, credentials, keys)"
+    },
+    "statusline": {
+      "type": "string",
+      "enum": ["full", "compact", "minimal", "none"],
+      "default": "full",
+      "description": "Statusline display mode"
+    },
+    "statusline_colors": {
+      "type": "boolean",
+      "default": true,
+      "description": "Render the statusline in colour"
+    },
+    "statusline_quota": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show the 5h / weekly quota chips in the statusline"
+    },
+    "statusline_layout": {
+      "type": "object",
+      "description": "Statusline layout override, carried through unconverted. Unlike the rest of this file, its interior uses the layout object's own key names (baseMode, lines, sections, sectionConfig, theme, responsiveBreakpoint, maxAgentRows, todoTruncation) so one layout definition is portable between this file and .fisrc.json.",
+      "additionalProperties": true
+    },
+    "paths": {
+      "type": "object",
+      "description": "Where this project keeps its documentation and plans",
+      "properties": {
+        "docs": { "type": "string", "default": "docs", "description": "Path to the documentation directory" },
+        "plans": { "type": "string", "default": "plans", "description": "Path to the plans directory" }
+      },
+      "additionalProperties": false
+    },
+    "docs": {
+      "type": "object",
+      "description": "Documentation settings",
+      "properties": {
+        "max_loc": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 5000,
+          "default": 800,
+          "description": "Maximum lines per documentation file before warning"
+        }
+      },
+      "additionalProperties": false
+    },
+    "plan": {
+      "type": "object",
+      "description": "Plan directory naming and validation",
+      "properties": {
+        "naming_format": {
+          "type": "string",
+          "default": "{date}-{issue}-{slug}",
+          "description": "Plan directory name format. Variables: {date}, {issue}, {slug}"
+        },
+        "date_format": {
+          "type": "string",
+          "default": "YYMMDD-HHmm",
+          "description": "Date format used by {date}"
+        },
+        "issue_prefix": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Prefix for issue references (e.g. GH-, JIRA-). null uses #<id>."
+        },
+        "reports_dir": {
+          "type": "string",
+          "default": "reports",
+          "description": "Subdirectory for reports within a plan"
+        },
+        "resolution": {
+          "type": "object",
+          "description": "How the active plan is resolved",
+          "properties": {
+            "order": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["session", "pointer", "branch"] },
+              "default": ["session", "pointer", "branch"],
+              "description": "Resolution strategies in priority order. 'session' and 'pointer' are directive; 'branch' only suggests. 'pointer' is the plan pinned per worktree and branch, which survives restarts."
+            },
+            "branch_pattern": {
+              "type": "string",
+              "default": "(?:feat|fix|chore|refactor|docs)/(?:[^/]+/)?(.+)",
+              "description": "Regex extracting a plan slug from a branch name"
+            }
+          },
+          "additionalProperties": false
+        },
+        "validation": {
+          "type": "object",
+          "description": "Plan validation questioning",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["prompt", "auto", "strict", "none"],
+              "default": "prompt",
+              "description": "prompt=ask questions, auto=auto-validate, strict=require all, none=skip"
+            },
+            "min_questions": { "type": "integer", "minimum": 0, "maximum": 20, "default": 3, "description": "Minimum validation questions" },
+            "max_questions": { "type": "integer", "minimum": 1, "maximum": 20, "default": 8, "description": "Maximum validation questions" },
+            "focus_areas": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["assumptions", "risks", "tradeoffs", "architecture", "security", "performance", "testing", "dependencies"]
+              },
+              "default": ["assumptions", "risks", "tradeoffs", "architecture"],
+              "description": "Focus areas for validation questions"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "description": "Detection overrides for a repository the defaults read wrong",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["auto", "library", "application", "monorepo", "cli", "api", "web", "mobile"],
+          "default": "auto"
+        },
+        "package_manager": {
+          "type": "string",
+          "enum": ["auto", "npm", "yarn", "pnpm", "bun"],
+          "default": "auto"
+        },
+        "framework": {
+          "type": "string",
+          "enum": ["auto", "react", "vue", "angular", "svelte", "nextjs", "nuxt", "express", "nestjs", "fastify", "none"],
+          "default": "auto"
+        }
+      },
+      "additionalProperties": false
+    },
+    "locale": {
+      "type": "object",
+      "description": "Language for responses and for thinking. null means English / match the user.",
+      "properties": {
+        "response_language": { "type": ["string", "null"], "default": null },
+        "thinking_language": { "type": ["string", "null"], "default": null }
+      },
+      "additionalProperties": false
+    },
+    "git": {
+      "type": "object",
+      "description": "Git platform settings. Workflows that create issues, branches, and merge requests read the provider from here.",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": ["auto", "gitlab", "github"],
+          "default": "auto",
+          "description": "auto detects from the origin remote"
+        }
+      },
+      "additionalProperties": false
+    },
+    "journal": {
+      "type": "object",
+      "description": "Technical journal behaviour",
+      "properties": {
+        "auto": {
+          "type": "boolean",
+          "default": false,
+          "description": "Write a journal entry at the end of a workflow without asking"
+        }
+      },
+      "additionalProperties": false
+    },
+    "trust": {
+      "type": "object",
+      "description": "Trust mode for auto-approval. `passphrase` is a credential and is only read from the user config; a project file setting it is ignored.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "passphrase": { "type": ["string", "null"], "default": null }
+      },
+      "additionalProperties": false
+    },
+    "gemini": {
+      "type": "object",
+      "description": "Gemini CLI configuration",
+      "properties": {
+        "model": {
+          "type": "string",
+          "default": "gemini-3-flash-preview",
+          "description": "Gemini model used by skills that delegate to the Gemini CLI"
+        }
+      },
+      "additionalProperties": false
+    },
+    "skills": {
+      "type": "object",
+      "description": "Per-skill configuration, keyed by skill id",
+      "properties": {
+        "research": {
+          "type": "object",
+          "properties": {
+            "use_gemini": {
+              "type": "boolean",
+              "default": false,
+              "description": "Delegate research to the Gemini CLI. Opt-in; requires a working CLI."
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": { "type": "object" }
+    },
+    "simplify": {
+      "type": "object",
+      "description": "The code-simplifier gate that runs on prompt submit. Signals are recomputed live from `git diff HEAD`.",
+      "properties": {
+        "gate": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Master toggle, off by default. FIS_SIMPLIFY_DISABLED=1 always bypasses."
+            },
+            "hard_verbs": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["ship", "merge", "pr", "deploy", "publish"],
+              "description": "Verbs that hard-block"
+            },
+            "soft_verbs": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["commit", "finalize", "release"],
+              "description": "Verbs that warn instead of blocking"
+            }
+          },
+          "additionalProperties": false
+        },
+        "threshold": {
+          "type": "object",
+          "description": "Diff-size limits that trigger the gate",
+          "properties": {
+            "loc_delta": { "type": "integer", "minimum": 0, "default": 400, "description": "Total lines added plus removed" },
+            "file_count": { "type": "integer", "minimum": 0, "default": 8, "description": "Number of files modified" },
+            "single_file_loc": { "type": "integer", "minimum": 0, "default": 200, "description": "Lines added in one file" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "workflow_artifact_gate": {
+      "type": "object",
+      "description": "Proof required before a workflow ships",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Per-hook toggles, keyed by the hook script's basename. A hook not listed here is enabled; only an explicit false disables it.",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "assertions": {
+      "type": "array",
+      "description": "Rules enforced on matching files",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern": { "type": "string", "description": "Glob pattern for files to match" },
+          "rule": { "type": "string", "description": "Rule to enforce" },
+          "message": { "type": "string", "description": "Message shown when the rule is violated" }
+        },
+        "required": ["pattern", "rule"],
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Settings this build does not model. Nothing here is validated or converted, and nothing is guaranteed to survive an upgrade.",
+      "additionalProperties": true
+    },
+    "keys": {
+      "description": "Credentials. User config only — a project file is committed, so this section is ignored there.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "api": {
+      "description": "API endpoints and tokens. User config only — a project file is committed, so this section is ignored there.",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://fis-ai-kit.local/schemas/skill-tiers.schema.json",
+  "type": "object",
+  "required": ["version", "minimumClaudeCodeVersion", "activeCeiling", "skills", "tiers", "catalogs", "optional", "packs"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string" },
+    "minimumClaudeCodeVersion": { "const": "2.1.199" },
+    "activeCeiling": { "const": 45 },
+    "skills": {
+      "type": "object",
+      "minProperties": 109,
+      "maxProperties": 109,
+      "propertyNames": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["sourcePath", "displayLabel"],
+        "additionalProperties": false,
+        "properties": {
+          "sourcePath": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*$" },
+          "displayLabel": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "tiers": {
+      "type": "object",
+      "required": ["tier1", "tier2"],
+      "additionalProperties": false,
+      "properties": {
+        "tier1": { "allOf": [{ "$ref": "#/$defs/skillList" }, { "minItems": 10, "maxItems": 10 }] },
+        "tier2": { "allOf": [{ "$ref": "#/$defs/skillList" }, { "minItems": 28, "maxItems": 28 }] }
+      }
+    },
+    "catalogs": {
+      "type": "object",
+      "required": ["core", "standard"],
+      "additionalProperties": false,
+      "properties": {
+        "core": { "const": ["tier1"] },
+        "standard": { "const": ["tier1", "tier2"] }
+      }
+    },
+    "optional": { "$ref": "#/$defs/skillList" },
+    "packs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "default", "skills"],
+        "additionalProperties": false,
+        "properties": {
+          "description": { "type": "string" },
+          "skills": { "$ref": "#/$defs/skillList" },
+          "default": { "const": "inactive" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "skillList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+    }
+  }
+}

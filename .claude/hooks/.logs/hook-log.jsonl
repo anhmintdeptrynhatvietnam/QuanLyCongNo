@@ -1,0 +1,229 @@
+{"ts":"2026-08-22T03:36:31.798Z","hook":"session-init","event":"SessionStart","tool":"","target":"","note":"startup","dur":1342,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:12.279Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"fetched","dur":568,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:17.355Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:14:17.371Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:17.562Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:25.259Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:31.778Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:14:31.797Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:31.806Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:14:31.816Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:32.012Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:14:32.029Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:03.214Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:20.140Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:20.147Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:20.408Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:20.418Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:21.074Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":671,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:42.959Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:15:58.083Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:16:34.002Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:16:52.157Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:16:59.751Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:16:59.773Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:16:59.994Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:17:00.053Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:17:00.064Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:17:00.273Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:17:05.797Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:19:16.240Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"fetched","dur":618,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:19:34.441Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:19:34.748Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:19:35.968Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:19:36.303Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:21:20.524Z","hook":"usage-quota-cache-refresh","event":"Stop","tool":"","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:35:40.235Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:35:40.258Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:35:41.086Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"fetched","dur":554,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:36:58.112Z","hook":"usage-quota-cache-refresh","event":"Stop","tool":"","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:39:02.456Z","hook":"secret-output-guardrail","event":"UserPromptSubmit","tool":"","target":"","note":"skipped","dur":2,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:39:03.044Z","hook":"usage-quota-cache-refresh","event":"UserPromptSubmit","tool":"","target":"","note":"fetched","dur":595,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:39:03.106Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":647,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:39:14.080Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:39:22.846Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Skill","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:40:55.630Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:00.415Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:41:01.287Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:13.125Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:16.842Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:41:16.852Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:17.054Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:36.681Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:41:37.013Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:40.718Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:41:40.739Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:40.963Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:46.691Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:41:47.070Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:51.588Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:41:51.604Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:41:51.826Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:43:53.959Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:43:53.982Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:44:10.914Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:44:11.472Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"fetched","dur":573,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:44:11.600Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":691,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:47:51.513Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:47:51.520Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:47:51.867Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"throttled","dur":2,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:47:51.886Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:47:52.077Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":201,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:48:42.560Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:48:42.583Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":10,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:48:42.931Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:48:42.945Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:48:43.077Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":147,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:49:37.732Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:49:37.743Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:49:37.989Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:49:38.523Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"fetched","dur":540,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:49:38.683Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":706,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:50:21.428Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:50:27.878Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:52:39.528Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":3,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:52:39.543Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:52:39.797Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:52:39.810Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:52:39.940Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":141,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:53:44.933Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":1,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:53:44.949Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:53:45.240Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:53:45.263Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:53:45.401Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":161,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:03.941Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":1,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:04.193Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:04.798Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"fetched","dur":609,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:04.894Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":715,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:55.209Z","hook":"descriptive-name","event":"PreToolUse","tool":"Write","target":"","note":"","dur":2,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:55.225Z","hook":"privacy-block","event":"PreToolUse","tool":"Write","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:55.505Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Write","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:55.514Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Write","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:55:55.658Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":164,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:56:15.258Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:56:33.534Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:56:49.763Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T09:56:50.072Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T09:57:24.850Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:00:48.846Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"AskUserQuestion","target":"","note":"fetched","dur":813,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:02.446Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:01:02.461Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:02.658Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:14.173Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:01:14.193Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:14.377Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:27.690Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:01:27.711Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:27.913Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:28.097Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:01:28.115Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:28.333Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:49.400Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:01:49.428Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:01:49.645Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:02:10.977Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:02:10.992Z","hook":"privacy-block","event":"PreToolUse","tool":"Read","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:02:11.190Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Read","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:03:53.662Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"AskUserQuestion","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:18.493Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:28.354Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:28.355Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:28.985Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":648,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:36.600Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:36.888Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:36.899Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:04:37.558Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":674,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:05:02.161Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:05:02.416Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:05:02.431Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:05:02.579Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":159,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:11.017Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:11.407Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:11.588Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":195,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:12.135Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"fetched","dur":738,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:23.583Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":11,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:23.984Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":3,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:24.005Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:24.190Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":204,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:34.031Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":9,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:34.353Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:34.370Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:34.565Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":206,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:41.895Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":13,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:42.542Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:42.549Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:42.754Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":224,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:50.866Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:51.261Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:51.261Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:06:51.402Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":153,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:02.124Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:02.398Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:02.413Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:02.541Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":137,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:09.296Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:09.545Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:09.553Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:09.691Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":156,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:16.223Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:16.469Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:16.484Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:16.625Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":144,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:35.703Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:35.952Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:35.956Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:36.096Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":145,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:41.669Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:41.912Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:41.926Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:42.011Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":101,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:48.726Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:48.968Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:48.976Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:07:49.102Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":139,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:13.647Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":6,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:13.891Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:13.905Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:14.041Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":142,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:23.658Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:23.898Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:23.913Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:24.037Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":145,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:32.829Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":8,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:33.249Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:33.254Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:33.392Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":152,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:39.923Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":4,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:40.163Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:40.167Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:40.298Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":142,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:50.072Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:50.345Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:50.348Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:08:50.515Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":169,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:01.841Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:02.091Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:02.097Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:02.245Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":148,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:07.391Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:07.627Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:07.637Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:07.769Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":144,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:12.088Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":5,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:12.340Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:12.355Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:12.487Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":145,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:40.772Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"PowerShell","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:41.000Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:09:41.365Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:53.959Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":7,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:54.362Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:54.376Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:09:55.340Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"context-injected","dur":976,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:10:02.859Z","hook":"privacy-block","event":"PreToolUse","tool":"Edit","target":"","note":"","dur":21,"status":"ok","exit":0,"error":""}
+{"ts":"2026-08-22T10:10:03.244Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Edit","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:10:03.257Z","hook":"plan-format-kanban","event":"PostToolUse","tool":"Edit","target":"","note":"non-plan-file","dur":0,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:10:03.473Z","hook":"dev-rules-reminder","event":"UserPromptSubmit","tool":"","target":"","note":"recently-injected","dur":233,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:10:07.265Z","hook":"scout-block","event":"PreToolUse","tool":"","target":"","note":"","dur":0,"status":"crash","exit":0,"error":"Cannot find module '../scout-block/pattern-matcher.cjs'\nRequire stack:\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\lib\\scout-checker.cjs\n- C:\\Users\\anhpqd2\\Desktop\\Tool\\QuanLyCongNo\\.claude\\hooks\\scout-block.cjs"}
+{"ts":"2026-08-22T10:10:07.811Z","hook":"usage-quota-cache-refresh","event":"PostToolUse","tool":"Grep","target":"","note":"throttled","dur":1,"status":"skip","exit":0,"error":""}
+{"ts":"2026-08-22T10:13:10.645Z","hook":"usage-quota-cache-refresh","event":"Stop","tool":"","target":"","note":"fetched","dur":665,"status":"ok","exit":0,"error":""}

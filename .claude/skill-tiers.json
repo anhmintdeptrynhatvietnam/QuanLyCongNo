@@ -1,0 +1,714 @@
+{
+  "version": "1.0.0",
+  "minimumClaudeCodeVersion": "2.1.199",
+  "activeCeiling": 45,
+  "skills": {
+    "docx": {
+      "sourcePath": "fis-document-skills/docx",
+      "displayLabel": "fis:docx"
+    },
+    "fis-advise": {
+      "sourcePath": "fis-advise",
+      "displayLabel": "fis:advise"
+    },
+    "fis-agent-browser": {
+      "sourcePath": "fis-agent-browser",
+      "displayLabel": "fis:agent-browser"
+    },
+    "fis-agentize": {
+      "sourcePath": "fis-agentize",
+      "displayLabel": "fis:agentize"
+    },
+    "fis-ai-artist": {
+      "sourcePath": "fis-ai-artist",
+      "displayLabel": "fis:ai-artist"
+    },
+    "fis-ai-multimodal": {
+      "sourcePath": "fis-ai-multimodal",
+      "displayLabel": "fis:ai-multimodal"
+    },
+    "fis-architecture": {
+      "sourcePath": "fis-architecture",
+      "displayLabel": "fis:architecture"
+    },
+    "fis-ask": {
+      "sourcePath": "fis-ask",
+      "displayLabel": "fis:ask"
+    },
+    "fis-autoresearch": {
+      "sourcePath": "fis-autoresearch",
+      "displayLabel": "fis:autoresearch"
+    },
+    "fis-backend-development": {
+      "sourcePath": "fis-backend-development",
+      "displayLabel": "fis:backend-development"
+    },
+    "fis-better-auth": {
+      "sourcePath": "fis-better-auth",
+      "displayLabel": "fis:better-auth"
+    },
+    "fis-bootstrap": {
+      "sourcePath": "fis-bootstrap",
+      "displayLabel": "fis:bootstrap"
+    },
+    "fis-brainstorm": {
+      "sourcePath": "fis-brainstorm",
+      "displayLabel": "fis:brainstorm"
+    },
+    "fis-bss-billing": {
+      "sourcePath": "fis-bss-billing",
+      "displayLabel": "fis:bss-billing"
+    },
+    "fis-chrome-devtools": {
+      "sourcePath": "fis-chrome-devtools",
+      "displayLabel": "fis:chrome-devtools"
+    },
+    "fis-chrome-profile": {
+      "sourcePath": "fis-chrome-profile",
+      "displayLabel": "fis:chrome-profile"
+    },
+    "fis-code-review": {
+      "sourcePath": "fis-code-review",
+      "displayLabel": "fis:code-review"
+    },
+    "fis-coding-level": {
+      "sourcePath": "fis-coding-level",
+      "displayLabel": "fis:coding-level"
+    },
+    "fis-common": {
+      "sourcePath": "fis-common",
+      "displayLabel": "fis:common"
+    },
+    "fis-context-engineering": {
+      "sourcePath": "fis-context-engineering",
+      "displayLabel": "fis:context-engineering"
+    },
+    "fis-copywriting": {
+      "sourcePath": "fis-copywriting",
+      "displayLabel": "fis:copywriting"
+    },
+    "fis-craft": {
+      "sourcePath": "fis-craft",
+      "displayLabel": "fis:craft"
+    },
+    "fis-cti-expert": {
+      "sourcePath": "fis-cti-expert",
+      "displayLabel": "fis:cti-expert"
+    },
+    "fis-databases": {
+      "sourcePath": "fis-databases",
+      "displayLabel": "fis:databases"
+    },
+    "fis-debug": {
+      "sourcePath": "fis-debug",
+      "displayLabel": "fis:debug"
+    },
+    "fis-deploy": {
+      "sourcePath": "fis-deploy",
+      "displayLabel": "fis:deploy"
+    },
+    "fis-design": {
+      "sourcePath": "fis-design",
+      "displayLabel": "fis:design-md"
+    },
+    "fis-devops": {
+      "sourcePath": "fis-devops",
+      "displayLabel": "fis:devops"
+    },
+    "fis-docs": {
+      "sourcePath": "fis-docs",
+      "displayLabel": "fis:docs"
+    },
+    "fis-docs-seeker": {
+      "sourcePath": "fis-docs-seeker",
+      "displayLabel": "fis:docs-seeker"
+    },
+    "fis-drawio": {
+      "sourcePath": "fis-drawio",
+      "displayLabel": "fis:drawio"
+    },
+    "fis-ehrp": {
+      "sourcePath": "fis-ehrp",
+      "displayLabel": "fis:ehrp"
+    },
+    "fis-elicit": {
+      "sourcePath": "fis-elicit",
+      "displayLabel": "fis:elicit"
+    },
+    "fis-excalidraw": {
+      "sourcePath": "fis-excalidraw",
+      "displayLabel": "excalidraw"
+    },
+    "fis-find-skills": {
+      "sourcePath": "fis-find-skills",
+      "displayLabel": "fis:find-skills"
+    },
+    "fis-fintech-vn": {
+      "sourcePath": "fis-fintech-vn",
+      "displayLabel": "fis:fintech-vn"
+    },
+    "fis-fix": {
+      "sourcePath": "fis-fix",
+      "displayLabel": "fis:fix"
+    },
+    "fis-frontend-design": {
+      "sourcePath": "fis-frontend-design",
+      "displayLabel": "fis:frontend-design"
+    },
+    "fis-frontend-development": {
+      "sourcePath": "fis-frontend-development",
+      "displayLabel": "fis:frontend-development"
+    },
+    "fis-git": {
+      "sourcePath": "fis-git",
+      "displayLabel": "fis:git"
+    },
+    "fis-gkg": {
+      "sourcePath": "fis-gkg",
+      "displayLabel": "fis:gkg"
+    },
+    "fis-google-adk-python": {
+      "sourcePath": "fis-google-adk-python",
+      "displayLabel": "fis:google-adk-python"
+    },
+    "fis-graphify": {
+      "sourcePath": "fis-graphify",
+      "displayLabel": "fis:graphify"
+    },
+    "fis-handoff": {
+      "sourcePath": "fis-handoff",
+      "displayLabel": "fis:handoff"
+    },
+    "fis-handover": {
+      "sourcePath": "fis-handover",
+      "displayLabel": "fis:handover"
+    },
+    "fis-help": {
+      "sourcePath": "fis-help",
+      "displayLabel": "fis:help"
+    },
+    "fis-journal": {
+      "sourcePath": "fis-journal",
+      "displayLabel": "fis:journal"
+    },
+    "fis-kanban": {
+      "sourcePath": "fis-kanban",
+      "displayLabel": "fis:kanban"
+    },
+    "fis-llms": {
+      "sourcePath": "fis-llms",
+      "displayLabel": "fis:llms"
+    },
+    "fis-loop": {
+      "sourcePath": "fis-loop",
+      "displayLabel": "fis:loop"
+    },
+    "fis-markdown-novel-viewer": {
+      "sourcePath": "fis-markdown-novel-viewer",
+      "displayLabel": "fis:markdown-novel-viewer"
+    },
+    "fis-mcp-builder": {
+      "sourcePath": "fis-mcp-builder",
+      "displayLabel": "fis:mcp-builder"
+    },
+    "fis-media-processing": {
+      "sourcePath": "fis-media-processing",
+      "displayLabel": "fis:media-processing"
+    },
+    "fis-mermaidjs-v11": {
+      "sourcePath": "fis-mermaidjs-v11",
+      "displayLabel": "fis:mermaidjs-v11"
+    },
+    "fis-mintlify": {
+      "sourcePath": "fis-mintlify",
+      "displayLabel": "fis:mintlify"
+    },
+    "fis-mobile-development": {
+      "sourcePath": "fis-mobile-development",
+      "displayLabel": "fis:mobile-development"
+    },
+    "fis-mvno": {
+      "sourcePath": "fis-mvno",
+      "displayLabel": "fis:mvno"
+    },
+    "fis-outcome": {
+      "sourcePath": "fis-outcome",
+      "displayLabel": "fis:outcome"
+    },
+    "fis-payment-integration": {
+      "sourcePath": "fis-payment-integration",
+      "displayLabel": "fis:payment-integration"
+    },
+    "fis-plan": {
+      "sourcePath": "fis-plan",
+      "displayLabel": "fis:plan"
+    },
+    "fis-plans-kanban": {
+      "sourcePath": "fis-plans-kanban",
+      "displayLabel": "fis:plans-kanban"
+    },
+    "fis-port-feature": {
+      "sourcePath": "fis-port-feature",
+      "displayLabel": "fis:port-feature"
+    },
+    "fis-port-repo": {
+      "sourcePath": "fis-port-repo",
+      "displayLabel": "fis:port-repo"
+    },
+    "fis-predict": {
+      "sourcePath": "fis-predict",
+      "displayLabel": "fis:predict"
+    },
+    "fis-preview": {
+      "sourcePath": "fis-preview",
+      "displayLabel": "fis:preview"
+    },
+    "fis-problem-solving": {
+      "sourcePath": "fis-problem-solving",
+      "displayLabel": "fis:problem-solving"
+    },
+    "fis-project-management": {
+      "sourcePath": "fis-project-management",
+      "displayLabel": "fis:project-management"
+    },
+    "fis-project-organization": {
+      "sourcePath": "fis-project-organization",
+      "displayLabel": "fis:project-organization"
+    },
+    "fis-react-best-practices": {
+      "sourcePath": "fis-react-best-practices",
+      "displayLabel": "fis:react-best-practices"
+    },
+    "fis-remotion": {
+      "sourcePath": "fis-remotion",
+      "displayLabel": "fis:remotion"
+    },
+    "fis-repomix": {
+      "sourcePath": "fis-repomix",
+      "displayLabel": "fis:repomix"
+    },
+    "fis-requirements": {
+      "sourcePath": "fis-requirements",
+      "displayLabel": "fis:requirements"
+    },
+    "fis-research": {
+      "sourcePath": "fis-research",
+      "displayLabel": "fis:research"
+    },
+    "fis-retro": {
+      "sourcePath": "fis-retro",
+      "displayLabel": "fis:retro"
+    },
+    "fis-review-mr": {
+      "sourcePath": "fis-review-mr",
+      "displayLabel": "fis:review-mr"
+    },
+    "fis-sap": {
+      "sourcePath": "fis-sap",
+      "displayLabel": "fis:sap"
+    },
+    "fis-scenario": {
+      "sourcePath": "fis-scenario",
+      "displayLabel": "fis:scenario"
+    },
+    "fis-scout": {
+      "sourcePath": "fis-scout",
+      "displayLabel": "fis:scout"
+    },
+    "fis-security": {
+      "sourcePath": "fis-security",
+      "displayLabel": "fis:security"
+    },
+    "fis-security-scan": {
+      "sourcePath": "fis-security-scan",
+      "displayLabel": "fis:security-scan"
+    },
+    "fis-sequential-thinking": {
+      "sourcePath": "fis-sequential-thinking",
+      "displayLabel": "fis:sequential-thinking"
+    },
+    "fis-shader": {
+      "sourcePath": "fis-shader",
+      "displayLabel": "fis:shader"
+    },
+    "fis-ship": {
+      "sourcePath": "fis-ship",
+      "displayLabel": "fis:ship"
+    },
+    "fis-shopify": {
+      "sourcePath": "fis-shopify",
+      "displayLabel": "fis:shopify"
+    },
+    "fis-show-off": {
+      "sourcePath": "fis-show-off",
+      "displayLabel": "fis:show-off"
+    },
+    "fis-skill-creator": {
+      "sourcePath": "fis-skill-creator",
+      "displayLabel": "fis:skill-creator"
+    },
+    "fis-stitch": {
+      "sourcePath": "fis-stitch",
+      "displayLabel": "fis:stitch"
+    },
+    "fis-tanstack": {
+      "sourcePath": "fis-tanstack",
+      "displayLabel": "fis:tanstack"
+    },
+    "fis-team": {
+      "sourcePath": "fis-team",
+      "displayLabel": "fis:team"
+    },
+    "fis-tech-graph": {
+      "sourcePath": "fis-tech-graph",
+      "displayLabel": "fis:tech-graph"
+    },
+    "fis-telco-self-care": {
+      "sourcePath": "fis-telco-self-care",
+      "displayLabel": "fis:telco-self-care"
+    },
+    "fis-template-skill": {
+      "sourcePath": "fis-template-skill",
+      "displayLabel": "fis:template-skill"
+    },
+    "fis-test": {
+      "sourcePath": "fis-test",
+      "displayLabel": "fis:test"
+    },
+    "fis-threejs": {
+      "sourcePath": "fis-threejs",
+      "displayLabel": "fis:threejs"
+    },
+    "fis-ui-styling": {
+      "sourcePath": "fis-ui-styling",
+      "displayLabel": "fis:ui-styling"
+    },
+    "fis-ui-ux-pro-max": {
+      "sourcePath": "fis-ui-ux-pro-max",
+      "displayLabel": "fis:ui-ux-pro-max"
+    },
+    "fis-use-mcp": {
+      "sourcePath": "fis-use-mcp",
+      "displayLabel": "fis:use-mcp"
+    },
+    "fis-utility-billing": {
+      "sourcePath": "fis-utility-billing",
+      "displayLabel": "fis:utility-billing"
+    },
+    "fis-vibe": {
+      "sourcePath": "fis-vibe",
+      "displayLabel": "fis:vibe"
+    },
+    "fis-vn-locale": {
+      "sourcePath": "fis-vn-locale",
+      "displayLabel": "fis:vn-locale"
+    },
+    "fis-watzup": {
+      "sourcePath": "fis-watzup",
+      "displayLabel": "fis:watzup"
+    },
+    "fis-web-design-guidelines": {
+      "sourcePath": "fis-web-design-guidelines",
+      "displayLabel": "fis:web-design-guidelines"
+    },
+    "fis-web-frameworks": {
+      "sourcePath": "fis-web-frameworks",
+      "displayLabel": "fis:web-frameworks"
+    },
+    "fis-web-testing": {
+      "sourcePath": "fis-web-testing",
+      "displayLabel": "fis:web-testing"
+    },
+    "fis-wireframe": {
+      "sourcePath": "fis-wireframe",
+      "displayLabel": "fis:wireframe"
+    },
+    "fis-worktree": {
+      "sourcePath": "fis-worktree",
+      "displayLabel": "fis:worktree"
+    },
+    "pdf": {
+      "sourcePath": "fis-document-skills/pdf",
+      "displayLabel": "fis:pdf"
+    },
+    "pptx": {
+      "sourcePath": "fis-document-skills/pptx",
+      "displayLabel": "fis:pptx"
+    },
+    "xlsx": {
+      "sourcePath": "fis-document-skills/xlsx",
+      "displayLabel": "fis:xlsx"
+    }
+  },
+  "tiers": {
+    "tier1": [
+      "fis-outcome",
+      "fis-craft",
+      "fis-plan",
+      "fis-scout",
+      "fis-debug",
+      "fis-fix",
+      "fis-test",
+      "fis-code-review",
+      "fis-git",
+      "fis-ship"
+    ],
+    "tier2": [
+      "fis-ask",
+      "fis-brainstorm",
+      "fis-elicit",
+      "fis-requirements",
+      "fis-architecture",
+      "fis-scenario",
+      "fis-research",
+      "fis-docs-seeker",
+      "fis-use-mcp",
+      "fis-find-skills",
+      "fis-docs",
+      "fis-preview",
+      "fis-worktree",
+      "fis-backend-development",
+      "fis-frontend-development",
+      "fis-databases",
+      "fis-devops",
+      "fis-deploy",
+      "fis-security-scan",
+      "fis-web-testing",
+      "fis-drawio",
+      "fis-vibe",
+      "fis-review-mr",
+      "fis-advise",
+      "fis-help",
+      "fis-handoff",
+      "fis-handover",
+      "fis-common"
+    ]
+  },
+  "catalogs": {
+    "core": [
+      "tier1"
+    ],
+    "standard": [
+      "tier1",
+      "tier2"
+    ]
+  },
+  "optional": [
+    "fis-sap",
+    "fis-ehrp",
+    "fis-bss-billing",
+    "fis-utility-billing",
+    "fis-mvno",
+    "fis-telco-self-care",
+    "fis-fintech-vn",
+    "fis-vn-locale",
+    "fis-wireframe",
+    "fis-stitch",
+    "fis-show-off",
+    "fis-ai-artist",
+    "fis-design",
+    "fis-ui-styling",
+    "fis-ui-ux-pro-max",
+    "fis-frontend-design",
+    "fis-web-design-guidelines",
+    "fis-tech-graph",
+    "fis-excalidraw",
+    "fis-mermaidjs-v11",
+    "fis-shopify",
+    "fis-payment-integration",
+    "fis-better-auth",
+    "fis-web-frameworks",
+    "fis-mobile-development",
+    "fis-react-best-practices",
+    "fis-tanstack",
+    "fis-google-adk-python",
+    "fis-ai-multimodal",
+    "fis-agentize",
+    "fis-autoresearch",
+    "fis-graphify",
+    "fis-llms",
+    "fis-predict",
+    "fis-loop",
+    "fis-threejs",
+    "fis-shader",
+    "fis-remotion",
+    "fis-chrome-profile",
+    "fis-agent-browser",
+    "fis-media-processing",
+    "fis-chrome-devtools",
+    "docx",
+    "pptx",
+    "pdf",
+    "xlsx",
+    "fis-mintlify",
+    "fis-markdown-novel-viewer",
+    "fis-copywriting",
+    "fis-project-organization",
+    "fis-team",
+    "fis-plans-kanban",
+    "fis-project-management",
+    "fis-kanban",
+    "fis-retro",
+    "fis-journal",
+    "fis-watzup",
+    "fis-coding-level",
+    "fis-bootstrap",
+    "fis-repomix",
+    "fis-mcp-builder",
+    "fis-skill-creator",
+    "fis-port-feature",
+    "fis-gkg",
+    "fis-context-engineering",
+    "fis-problem-solving",
+    "fis-port-repo",
+    "fis-sequential-thinking",
+    "fis-template-skill",
+    "fis-security",
+    "fis-cti-expert"
+  ],
+  "packs": {
+    "enterprise-apps": {
+      "description": "SAP and enterprise HR applications",
+      "default": "inactive",
+      "skills": [
+        "fis-sap",
+        "fis-ehrp"
+      ]
+    },
+    "telecom-billing": {
+      "description": "Telecom and utility billing domains",
+      "default": "inactive",
+      "skills": [
+        "fis-bss-billing",
+        "fis-utility-billing",
+        "fis-mvno",
+        "fis-telco-self-care"
+      ]
+    },
+    "vietnam-market": {
+      "description": "Vietnam finance and locale adaptation",
+      "default": "inactive",
+      "skills": [
+        "fis-fintech-vn",
+        "fis-vn-locale"
+      ]
+    },
+    "visual-design": {
+      "description": "UI, brand, wireframe, and frontend design",
+      "default": "inactive",
+      "skills": [
+        "fis-wireframe",
+        "fis-stitch",
+        "fis-show-off",
+        "fis-ai-artist",
+        "fis-design",
+        "fis-ui-styling",
+        "fis-ui-ux-pro-max",
+        "fis-frontend-design",
+        "fis-web-design-guidelines"
+      ]
+    },
+    "diagrams-visualization": {
+      "description": "Technical diagrams and visual explanation",
+      "default": "inactive",
+      "skills": [
+        "fis-tech-graph",
+        "fis-excalidraw",
+        "fis-mermaidjs-v11"
+      ]
+    },
+    "application-platforms": {
+      "description": "Application frameworks, commerce, auth, and payments",
+      "default": "inactive",
+      "skills": [
+        "fis-shopify",
+        "fis-payment-integration",
+        "fis-better-auth",
+        "fis-web-frameworks",
+        "fis-mobile-development",
+        "fis-react-best-practices",
+        "fis-tanstack"
+      ]
+    },
+    "ai-automation": {
+      "description": "AI agents, multimodal workflows, and autonomous loops",
+      "default": "inactive",
+      "skills": [
+        "fis-google-adk-python",
+        "fis-ai-multimodal",
+        "fis-agentize",
+        "fis-autoresearch",
+        "fis-graphify",
+        "fis-llms",
+        "fis-predict",
+        "fis-loop"
+      ]
+    },
+    "browser-media": {
+      "description": "Browser automation and rich media production",
+      "default": "inactive",
+      "skills": [
+        "fis-threejs",
+        "fis-shader",
+        "fis-remotion",
+        "fis-chrome-profile",
+        "fis-agent-browser",
+        "fis-media-processing",
+        "fis-chrome-devtools"
+      ]
+    },
+    "documents-publishing": {
+      "description": "Office documents and publishing workflows",
+      "default": "inactive",
+      "skills": [
+        "docx",
+        "pptx",
+        "pdf",
+        "xlsx",
+        "fis-mintlify",
+        "fis-markdown-novel-viewer",
+        "fis-copywriting"
+      ]
+    },
+    "planning-collaboration": {
+      "description": "Planning, coordination, reporting, and retrospectives",
+      "default": "inactive",
+      "skills": [
+        "fis-project-organization",
+        "fis-team",
+        "fis-plans-kanban",
+        "fis-project-management",
+        "fis-kanban",
+        "fis-retro",
+        "fis-journal",
+        "fis-watzup",
+        "fis-coding-level",
+        "fis-bootstrap"
+      ]
+    },
+    "engineering-extensions": {
+      "description": "Repository analysis, MCP authoring, and engineering extensions",
+      "default": "inactive",
+      "skills": [
+        "fis-repomix",
+        "fis-mcp-builder",
+        "fis-skill-creator",
+        "fis-port-feature",
+        "fis-gkg",
+        "fis-context-engineering",
+        "fis-problem-solving",
+        "fis-port-repo",
+        "fis-sequential-thinking",
+        "fis-template-skill"
+      ]
+    },
+    "security-intelligence": {
+      "description": "Deep security and threat-intelligence analysis",
+      "default": "inactive",
+      "skills": [
+        "fis-security",
+        "fis-cti-expert"
+      ]
+    }
+  }
+}

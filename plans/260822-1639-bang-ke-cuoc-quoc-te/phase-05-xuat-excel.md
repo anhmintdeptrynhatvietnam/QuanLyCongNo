@@ -1,0 +1,145 @@
+---
+phase: 5
+title: "Xuất Excel gửi khách"
+status: pending
+priority: P2
+effort: "1d"
+dependencies: [4]
+---
+
+# Phase 05: Xuất Excel gửi khách
+
+## Overview
+
+Xuất bảng kê thành file `.xlsx` có định dạng khớp mẫu khách đang quen nhận: tiêu
+đề công ty, khối thông tin người mua, bảng kẻ khung, dòng Grand Total, "Bằng chữ",
+khối chữ ký. Gửi được ngay không cần sửa tay.
+
+## Requirements
+
+**Functional**
+- Xuất đúng bố cục file mẫu `COVATEC 2026.06.xlsx`.
+- Số tiền định dạng có phân cách nghìn; ngày dạng `YYYY-MM-DD`.
+- "Bằng chữ" sinh từ `manifestAmountInWords()` (Phase 03) theo quy ước file khách,
+  **không** gọi trực tiếp `numberToWordsVN` — xem open question #4 trong `plan.md`.
+- Tên file có mã khách + kỳ, ví dụ `COVATEC 2026.06.xlsx`.
+
+**Non-functional**
+- Không thêm bước build; thư viện nạp qua CDN như `xlsx` hiện tại.
+- In được A4 ngang không phải chỉnh lại (page setup nếu thư viện hỗ trợ).
+
+## Architecture
+
+### Bước 0 — spike bắt buộc trước khi code
+
+**[Unverified]** `index.html:19` đang nạp `xlsx@0.18.5` (SheetJS community). Theo
+hiểu biết hiện tại, bản community **ghi được** `!merges`, `!cols`, `!rows` và
+định dạng số (`z`), nhưng **không ghi được** style ô (font, viền, tô nền). Toàn bộ
+export hiện có trong `export-service.js` chỉ dùng `json_to_sheet` + `!cols` — chưa
+có chỗ nào set viền hay in đậm, nên codebase không trả lời được câu này.
+
+Chưa xác minh trong phiên làm việc này. **Việc đầu tiên của phase là spike ~30
+phút**: tạo một sheet nhỏ, set `cell.s = { font: { bold: true }, border: {...} }`,
+ghi file, mở lại và xem style có còn không.
+
+Kết quả spike quyết định nhánh triển khai:
+
+| Kết quả | Hướng đi |
+|---|---|
+| Style ghi được | dùng luôn `xlsx` hiện có, không thêm phụ thuộc |
+| Style bị bỏ | thêm CDN `xlsx-js-style` (fork của 0.18.5, **cùng API**) chỉ cho export này |
+
+Phương án dự phòng nếu cả hai không đạt: `ExcelJS` (style + page setup đầy đủ,
+API khác hẳn, ~1 MB). Chỉ chuyển khi `xlsx-js-style` cũng không đủ — đổi thư
+viện là quyết định có ảnh hưởng, cần hỏi người dùng trước.
+
+**Không** chọn hướng nhồi dữ liệu vào file template `.xlsx` sẵn: SheetJS không giữ
+được style khi đọc-rồi-ghi, nên hướng đó cần thư viện khác nữa mà không lợi hơn.
+
+### Bố cục file xuất (theo đúng mẫu đã đọc)
+
+| Dòng | Nội dung | Merge |
+|---|---|---|
+| 1 | tên công ty (từ `settings.companyName`) | `A1:K1` |
+| 2 | địa chỉ | `A2:Z2` |
+| 3 | `MST: …` | `A3:K3` |
+| 4 | **BẢNG KÊ CHI TIẾT CƯỚC QUỐC TẾ** | `A4:Z4` |
+| 5 | `Số: {sheetNo}` | `A5:Z5` |
+| 6 | `Ngày … tháng … năm …` | `A6:Z6` |
+| 8 | `Đơn vị mua hàng:` + tên khách | |
+| 9 | `Địa chỉ :` + địa chỉ khách | `A9:B9`, `C9:L9` |
+| 10 | `Mã số thuế:` + MST khách | |
+| 11 | header 26 cột (wrap text) | |
+| 12+ | dòng dữ liệu | |
+| n | `Grand Total` + các tổng | `A{n}:K{n}` |
+| n+1 | `Thuế GTGT 0%` | |
+| n+2 | `Tổng Giá trị thanh toán` + số tiền | |
+| n+3 | `*NOTE: TỈ GIÁ TIỀN WON-VND TÍNH THEO NGÀY CHUYỂN HÀNG` | |
+| n+4 | `Bằng chữ: …` | |
+| n+6 | `Người mua hàng` / `Người bán hàng` / `Thủ trưởng đơn vị` | |
+| n+7 | `(ký,ghi rõ họ tên)` … | |
+
+Thông tin công ty lấy từ `state.settings` (module Cài đặt đã có), **không
+hardcode** "CÔNG TY TNHH MEI VINA".
+
+### Sửa lỗi lệch cột của file mẫu
+
+Dòng Grand Total của file mẫu bị lệch: tổng FUEL `891.100` nằm dưới header
+`DELIVERY CHARGE`, `P54`/`Q54`/`S54` = 0, và 300.000đ/dòng bị gõ ở cột `PHÍ PICK`
+trong khi tổng của nó lại nằm đúng ở cột `PHÍ GIÁM SÁT TỜ KHAI`.
+
+File do app xuất ra phải **đặt đúng cột**. Đây là thay đổi nhìn thấy được so với
+file khách đang nhận, nên phải nói trước với người dùng: con số tổng không đổi,
+chỉ nằm đúng cột.
+
+## Related Code Files
+
+- Create: `js/services/manifest-export.js`
+- Modify: `index.html` — thêm CDN thư viện style (nếu spike cho thấy cần)
+- Modify: `js/components/manifests.js` — nút "Xuất Excel"
+- Modify: `js/config.js` — hằng số bố cục nếu cần
+
+## Implementation Steps
+
+1. **Spike** khả năng ghi style của `xlsx@0.18.5`; ghi kết luận vào
+   `plans/reports/spike-260822-xlsx-style.md`.
+2. Chốt thư viện theo bảng trên; nếu phải chuyển sang `ExcelJS` thì hỏi người dùng.
+3. Viết `manifest-export.js`:
+   - `buildSheetMatrix(manifest, settings, catalogs)` → mảng 2 chiều (thuần, test được)
+   - `applyLayout(worksheet)` → merges, `!cols`, `!rows`, style viền/đậm/wrap
+   - `exportManifestToExcel(manifest, …)` → ghi file
+4. Tên shipper xuất kèm hậu tố: `` `${shipper.name} ${shipper.customsCleared ? "TQ" : "KTQ"}` ``.
+5. Dòng tổng đặt đúng cột (xem trên).
+6. Đối chiếu bằng mắt với file mẫu; kiểm tra bản in A4 ngang.
+
+## Success Criteria
+
+- [ ] Spike có kết luận rõ ràng và được ghi lại thành báo cáo
+- [ ] File xuất có kẻ khung, header in đậm wrap text, các khối merge đúng
+- [ ] Thông tin công ty lấy từ Cài đặt, không hardcode
+- [ ] Shipper xuất ra có đúng một hậu tố `TQ` / `KTQ`
+- [ ] `Tổng Giá trị thanh toán` = tổng cột `TOTAL AMOUNT (VND)`
+- [ ] `Bằng chữ` khớp số tiền **và** đúng quy ước đã chốt ở open question #4
+      (red team #5)
+- [ ] Các tổng nằm đúng cột header của chúng
+- [ ] Mở bằng Excel không có cảnh báo file lỗi
+- [ ] In A4 ngang không bị cắt cột
+
+## Risk Assessment
+
+**Bản community không ghi được style** — rủi ro chính, đã có nhánh xử lý sẵn.
+*Signal:* file spike mở ra không có viền/in đậm. *Response:* thêm CDN
+`xlsx-js-style` (drop-in, cùng API, không phải viết lại).
+
+**`xlsx-js-style` là fork cộng đồng** — cập nhật chậm, có thể lệch so với upstream.
+*Signal:* lỗi khi đọc/ghi file do khách gửi lại. *Response:* chỉ dùng nó cho
+đường **ghi** bảng kê; giữ `xlsx` gốc cho mọi đường **đọc** đang có. Hai thư viện
+cùng tồn tại là có chủ ý, cần ghi rõ lý do trong `manifest-export.js`.
+
+**File xuất khác file khách đang quen** (do sửa lệch cột) *Signal:* khách phản hồi
+"khác file cũ". *Response:* đã chủ động nêu trước; giữ nguyên số liệu, chỉ đúng
+cột — không tái tạo lại lỗi cũ để cho giống.
+
+**Tăng ~900 KB CDN** *Signal:* trang tải chậm rõ rệt trên mạng yếu.
+*Response:* nạp thư viện style theo yêu cầu (dynamic `import()` / chèn thẻ script
+khi bấm Xuất) thay vì nạp sẵn ở `index.html`.

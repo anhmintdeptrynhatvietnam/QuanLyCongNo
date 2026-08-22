@@ -1,0 +1,23 @@
+{
+  "name": "fis",
+  "description": "Outcome-first AI toolkit for software teams — skills and agents for requirements, architecture, craft, and quality across any delivery context.",
+  "version": "0.5.0",
+  "author": {
+    "name": "FIS AI Team",
+    "email": "ai-kit@fpt.com"
+  },
+  "homepage": "https://github.com/fis/ai-kit",
+  "license": "Proprietary",
+  "keywords": [
+    "outcome-first",
+    "sdlc",
+    "requirements",
+    "architecture",
+    "craft",
+    "quality",
+    "ai-skills",
+    "fis",
+    "brownfield",
+    "greenfield"
+  ]
+}
