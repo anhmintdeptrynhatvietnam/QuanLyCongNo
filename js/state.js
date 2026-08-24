@@ -865,7 +865,7 @@ class StateStore {
     const list = this.state.catalogs[type];
     if (!list) return { ok: false, error: `Không có danh mục "${type}".` };
 
-    const duplicate = findDuplicateEntry(list, entry, type, entry.id || null);
+    const duplicate = findDuplicateEntry(list, entry, entry.id || null);
     if (duplicate) {
       return { ok: false, error: `"${duplicate.name || duplicate.code}" đã có trong danh mục.` };
     }
@@ -921,7 +921,7 @@ class StateStore {
       const next = [...list];
 
       for (const entry of entries) {
-        if (findDuplicateEntry(next, entry, type)) {
+        if (findDuplicateEntry(next, entry)) {
           skipped++;
           continue;
         }

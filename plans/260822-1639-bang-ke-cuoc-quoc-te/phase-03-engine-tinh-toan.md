@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Engine tính toán"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: [1, 2]
@@ -32,14 +32,19 @@ Toàn bộ nghiệp vụ tính tiền, thuần hàm, không phụ thuộc DOM, c
 ### Công thức
 
 ```
-freightCharge = baseFee + (cwt − 1) × stepFee                     [KRW]
-totalKrw      = freight + fuel + customsCharge + deliveryCharge
-                + krwCollectedForKorea + overCharge + otherCharge  [KRW]
-vndFees       = Σ fixedFees áp dụng được + pickFee                 [VND]
-totalVnd      = ROUND(totalKrw × rate + vndFees, 0)
+freightCharge = baseFee + (cwt − 1) × stepFee                      [KRW, cột O]
+totalKrw      = freight + fuel + customsCharge + deliveryCharge     [KRW, cột X]
+vndFees       = Σ fixedFees áp dụng được + pickFee                  [VND, cột S+T]
+totalVnd      = ROUND(totalKrw × rate + vndFees, 0)                 [VND, cột Y]
 ```
 
-`fixedFees` áp dụng khi `!fee.requiresCustoms || shipper.customsCleared`.
+`totalKrw` khớp đúng công thức `X = SUM(O:R)` của file gốc, tức **không** gồm cột
+`U` (Phí Hàn thu hộ), `V` (OVER CHARGE), `W` (OTHER CHARGE). Cả 42 dòng tháng 6 để
+trống ba cột đó nên không có dữ liệu để suy ra ý định — giữ nguyên hành vi của file
+để tái tạo khớp tuyệt đối. Xem open question #5 trong `plan.md`.
+
+`fixedFees` áp dụng khi `!fee.requiresCustoms || line.customsCleared` — cờ thông
+quan nằm trên **dòng**, không trên bản ghi shipper.
 
 ### Số học tiền tệ: bắt buộc dùng số nguyên
 
@@ -114,10 +119,9 @@ descriptionTemplate:
   "Cước vận chuyển {route} theo bill số {blNo}, BKS: {truckPlate}, Mã CB: {flightCode}"
 ```
 
-Lưu ý: dòng 46–53 của file mẫu có cột `D` chứa `OZ734` thay vì câu diễn giải, và
-cột `E` (mã chuyến bay) trống — thêm một biểu hiện của việc file bị lệch cột.
-Trong app, mã chuyến bay luôn lấy từ `flightCode` của dòng, không bao giờ từ ô
-diễn giải.
+Lưu ý: từ dòng 46 trở đi cột `D` chứa `OZ734` thay vì câu diễn giải — người nhập
+gõ tay thay vì để công thức chạy. Trong app, mã chuyến bay luôn lấy từ `flightCode`
+của dòng, không bao giờ từ ô diễn giải.
 
 ### [Red team #5] "Bằng chữ" chưa khớp quy ước file khách
 
@@ -162,7 +166,9 @@ nhận trước Phase 05. Mặc định tạm: khớp file khách (`ngàn`, dấ
 
 - Create: `js/services/manifest-engine.js`
 - Create: `test_manifest_engine.mjs` — golden test 42 dòng
-- Modify: `js/config.js` — `RATE_SCALE`, `DEFAULT_DESCRIPTION_TEMPLATE`, `DEFAULT_FUEL`
+- Modify: `js/config.js` — `RATE_SCALE`, `DEFAULT_DESCRIPTION_TEMPLATE`,
+  `DEFAULT_DELIVERY_CHARGE` (không phải `DEFAULT_FUEL`: cột `FUEL` trống cả 42
+  dòng, phí theo lô nằm ở `DELIVERY CHARGE`)
 - Modify: `package.json` — thêm script chạy test engine
 
 Không sửa `js/utils/formatters.js`: `manifestAmountInWords` là hàm bọc nằm trong
@@ -172,36 +178,37 @@ Không sửa `js/utils/formatters.js`: `manifestAmountInWords` là hàm bọc n�
 
 1. Viết `manifest-engine.js` với các hàm thuần:
    - `computeFreight(cwt, rateCard)`
-   - `sumKrwCharges(line)`
-   - `applicableVndFees(rateCard, shipper, line)`
+   - `sumKrwCharges(line)` — chỉ cộng O..R, khớp `SUM(O:R)`
+   - `applicableVndFees(line, rateCard)` — cờ thông quan đọc từ **dòng**
    - `toVnd(totalKrw, rate, vndFees)`
-   - `computeLine(line, ctx)` — `ctx = { rateCard, shipper, rate }`
-   - `computeSheet(sheet, ctx)` → `{ totalKrw, totalVnd, amountInWords }`
+   - `computeLine(line, ctx)` — `ctx = { rateCard, rate }`
+   - `computeSheet(sheet, ctx)` — `ctx = { rateCard, rateResolver }`
    - `renderLineDescription(line, sheet)`
+   - `createLine(previous, defaults)` — dòng mới kế thừa dòng trước (dùng ở Phase 04)
 2. `manifestAmountInWords()` — bọc `numberToWordsVN` từ `utils/formatters.js` để
    ra quy ước của bảng kê (red team #5). **Không sửa** `numberToWordsVN`: 5 mẫu
    chứng từ đang dùng nó (`voucher-templates.js:294, 402, 510, 607, 702`).
-3. Trích 42 dòng file mẫu thành fixture: `date`, `cwt`, `fuel`, `customsCleared`,
-   `rate`, và `expectedTotalVnd`. Ghi rõ trong fixture rằng số kỳ vọng lấy từ
-   cached value của file gốc.
+3. Trích 42 dòng file mẫu thành fixture bằng script SheetJS (**không gõ tay**):
+   `date`, `cwt`, `delivery` (cột R), `tq`, `rate`, `freight`, `krw`, `vnd`.
+   Kèm `ct` theo dòng để tổng số kiện đối chiếu được với ô `L54 = 57`.
 4. Viết `test_manifest_engine.mjs` theo đúng khuôn `test_runner_node.mjs` (hàm
    `assert` cục bộ, chạy bằng `node`).
 5. Chạy test, sửa engine cho tới khi 42/42 khớp **và** tổng bằng `147.419.655`.
 
 ## Success Criteria
 
-- [ ] `computeFreight(1, covatec)` = 20.000; `(3)` = 37.500; `(10.5)` = 103.125;
+- [x] `computeFreight(1, covatec)` = 20.000; `(3)` = 37.500; `(10.5)` = 103.125;
       `(220)` = 1.936.250
-- [ ] 42/42 dòng khớp `expectedTotalVnd` **chính xác đến đồng**
-- [ ] Tổng `totalVnd` toàn bảng = `147.419.655`
-- [ ] 5 dòng có giá trị `.5` (R23, R24, R28, R32, R42) khớp đúng, không lệch 1đ
-- [ ] Shipper `customsCleared: false` → không cộng 300.000đ
-- [ ] `overrides` phủ được lên ô đã tính và không bị mất khi tính lại
-- [ ] `manifestAmountInWords(147419655)` khớp đúng quy ước đã chốt ở open
+- [x] 42/42 dòng khớp `expectedTotalVnd` **chính xác đến đồng**
+- [x] Tổng `totalVnd` toàn bảng = `147.419.655`
+- [x] 5 dòng có giá trị `.5` (R23, R24, R28, R32, R42) khớp đúng, không lệch 1đ
+- [x] Shipper `customsCleared: false` → không cộng 300.000đ
+- [x] `overrides` phủ được lên ô đã tính và không bị mất khi tính lại
+- [x] `manifestAmountInWords(147419655)` khớp đúng quy ước đã chốt ở open
       question #4 (mặc định: `"Một trăm bốn mươi bảy triệu, bốn trăm mười chín
       ngàn, sáu trăm năm mươi lăm đồng chẵn"`) — red team #5
-- [ ] `numberToWordsVN` không bị sửa; 5 mẫu chứng từ cũ in ra y như trước
-- [ ] Engine import được trong Node mà không cần DOM
+- [x] `numberToWordsVN` không bị sửa; 5 mẫu chứng từ cũ in ra y như trước
+- [x] Engine import được trong Node mà không cần DOM
 
 ## Risk Assessment
 
@@ -210,12 +217,18 @@ Không sửa `js/utils/formatters.js`: `manifestAmountInWords` là hàm bọc n�
 sang lưu dạng số nguyên đã nhân sẵn `krwToVndScaled` ngay từ Phase 01 thay vì
 nguyên hoá lúc tính.
 
-**Số kỳ vọng trong fixture lấy từ file đã hỏng** — cột `TOTAL AMOUNT (VND)` của
-file mẫu là cached value, không phải kết quả công thức hiện tại.
-*Signal:* một dòng không thể khớp bằng bất kỳ tổ hợp phí nào.
-*Response:* các số này đã được kiểm tay trên nhiều dòng và khớp mô hình
-`totalKrw × rate + phí VND`; nếu có dòng lệch, coi cached value của dòng đó là sai
-và **hỏi khách hàng**, không sửa engine cho vừa số.
+**~~Số kỳ vọng lấy từ file đã hỏng~~ — rủi ro này không tồn tại.** Đã kiểm lại:
+công thức trong file nhất quán ở cả 42 dòng (`O` bảng giá, `X = SUM(O:R)`,
+`Y = ROUND(X*Z+T,0)`) nên các số kỳ vọng **là** kết quả công thức, không phải số gõ
+tay. Tổng của cả 11 cột ở dòng 54 cũng khớp tổng thực của chính cột đó.
+
+**Sai cột khi trích fixture** — rủi ro thật, đã xảy ra một lần trong quá trình làm.
+Script dump XML tự viết ban đầu coi thẻ rỗng tự đóng `<c r="P12"/>` là thẻ mở nên
+gán giá trị sai nhãn cột, dẫn tới kết luận sai rằng file bị lệch cột.
+*Signal:* tổng theo cột không khớp ô tổng của cột đó; hoặc một cột lẽ ra có dữ liệu
+lại rỗng. *Response:* trích fixture bằng SheetJS (đã làm), và mọi tổng trong golden
+test phải đối chiếu với **đúng ô tổng** của cột đó trong file (`L54`, `M54`, `N54`,
+`O54`, `R54`, `T54`, `X54`, `Y54`) chứ không chỉ đối chiếu tổng cuối.
 
 **Excel `ROUND` vs `Math.round`** khác nhau ở số âm. *Signal:* không có — mọi giá
 trị đều dương. *Response:* nếu về sau có phí âm (giảm giá), viết `roundHalfAwayFromZero()`.

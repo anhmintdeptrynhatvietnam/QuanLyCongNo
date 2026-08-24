@@ -275,6 +275,33 @@ export const CUSTOMS_SUFFIXES = [
   { suffix: "TQ", customsCleared: true }
 ];
 
+// ============================================================
+// BẢNG KÊ: HẰNG SỐ TÍNH TOÁN
+// ============================================================
+
+/**
+ * Hệ số nguyên hoá tỷ giá khi quy đổi KRW sang VND.
+ *
+ * Tỷ giá nguồn có 2 chữ số thập phân; dùng 4 để dư biên. Nhân bằng số nguyên rồi
+ * mới chia giữ cho các giá trị rơi đúng .5 không bị dấu phẩy động làm lệch 1đ —
+ * trong bảng kê tháng 6 có 5 dòng rơi vào trường hợp này.
+ */
+export const RATE_SCALE = 10000;
+
+/**
+ * Phí giao nhận mặc định cho dòng mới (KRW), cột DELIVERY CHARGE.
+ *
+ * Trong bảng kê tháng 6, cột FUEL và CUSTOMS CHARGE trống cả 42 dòng; phí theo
+ * từng lô được nhập ở cột DELIVERY CHARGE, và mọi dòng đều >= 5.000.
+ * Không suy ra được công thức (cùng 3 kg có dòng 5.000, dòng 6.000, dòng 50.000)
+ * nên đây chỉ là giá trị khởi tạo, người dùng nhập lại theo báo phí thực tế.
+ */
+export const DEFAULT_DELIVERY_CHARGE = 5000;
+
+/** Template diễn giải mặc định, thay cho công thức CONCATENATE trong file gốc. */
+export const DEFAULT_DESCRIPTION_TEMPLATE =
+  "Cước vận chuyển {route} theo bill số {blNo}, BKS: {truckPlate}, Mã CB: {flightCode}";
+
 /**
  * Định nghĩa 5 danh mục dùng chung. Một component CRUD duy nhất dựng bảng và form
  * từ cấu hình này, nên thêm loại danh mục mới không phải viết thêm màn hình.
@@ -283,12 +310,11 @@ export const CATALOG_DEFS = {
   shippers: {
     label: "Shipper (Người gửi)",
     icon: "package",
+    // Không có cờ thông quan ở đây: trong dữ liệu thật cùng một công ty xuất hiện
+    // ở cả hai dạng TQ và KTQ trên các dòng khác nhau, nên thông quan là dữ kiện
+    // của từng lô hàng, không phải thuộc tính của công ty. Cờ nằm trên ManifestLine.
     fields: [
-      { key: "name", label: "Tên người gửi", type: "text", required: true, placeholder: "COVATEC VIETNAM CO., LTD" },
-      {
-        key: "customsCleared", label: "Có thông quan (TQ)", type: "checkbox",
-        hint: "Bật = TQ, hệ thống tự cộng phí giám sát tờ khai. Tắt = KTQ, không cộng."
-      }
+      { key: "name", label: "Tên người gửi", type: "text", required: true, placeholder: "COVATEC VIETNAM CO., LTD" }
     ]
   },
   consignees: {

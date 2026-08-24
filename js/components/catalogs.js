@@ -12,7 +12,7 @@ import { Toast } from './toast.js';
 import { qs, qsa, escapeHtml } from '../utils/dom.js';
 import { formatCurrency, parseCurrency } from '../utils/formatters.js';
 import { CATALOG_DEFS, CATALOG_TYPES, PORT_KIND_LABELS, PORT_KINDS } from '../config.js';
-import { splitCustomsSuffix, formatShipperName, findCatalogUsage } from '../services/catalog-service.js';
+import { splitCustomsSuffix, findCatalogUsage } from '../services/catalog-service.js';
 
 const RATE_CARDS_TAB = 'rateCards';
 
@@ -82,7 +82,6 @@ export class CatalogsView extends BaseComponent {
           <thead>
             <tr>
               ${def.fields.map(f => `<th>${escapeHtml(f.label)}</th>`).join('')}
-              ${type === 'shippers' ? '<th>Hiển thị trên bảng kê</th>' : ''}
               <th style="width: 90px;"></th>
             </tr>
           </thead>
@@ -90,7 +89,6 @@ export class CatalogsView extends BaseComponent {
             ${entries.map(entry => `
               <tr>
                 ${def.fields.map(f => `<td>${this.renderCell(entry, f)}</td>`).join('')}
-                ${type === 'shippers' ? `<td><code>${escapeHtml(formatShipperName(entry))}</code></td>` : ''}
                 <td>
                   <button class="btn btn-icon btn-sm btn-edit-entry" data-id="${entry.id}" title="Sửa">
                     <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
@@ -110,11 +108,6 @@ export class CatalogsView extends BaseComponent {
   renderCell(entry, field) {
     const value = entry[field.key];
 
-    if (field.type === 'checkbox') {
-      return value
-        ? '<span class="badge badge-customs-yes">Có thông quan (TQ)</span>'
-        : '<span class="badge badge-customs-no">Không thông quan (KTQ)</span>';
-    }
     if (field.type === 'select' && field.options) {
       return escapeHtml(field.options[value] || value || '—');
     }
@@ -293,18 +286,6 @@ export class CatalogsView extends BaseComponent {
     const value = entry ? entry[field.key] : (field.defaultValue ?? '');
     const id = `cat-field-${field.key}`;
 
-    if (field.type === 'checkbox') {
-      return `
-        <div class="form-group">
-          <label class="form-label" style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
-            <input type="checkbox" id="${id}" ${value ? 'checked' : ''} style="width: 16px; height: 16px;">
-            <span>${escapeHtml(field.label)}</span>
-          </label>
-          ${field.hint ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: var(--space-1);">${escapeHtml(field.hint)}</div>` : ''}
-        </div>
-      `;
-    }
-
     if (field.type === 'select') {
       return `
         <div class="form-group">
@@ -339,13 +320,9 @@ export class CatalogsView extends BaseComponent {
       const el = qs(`#cat-field-${field.key}`, body);
       if (!el) continue;
 
-      if (field.type === 'checkbox') {
-        payload[field.key] = el.checked;
-      } else {
-        let raw = String(el.value || '').trim();
-        if (field.uppercase) raw = raw.toUpperCase();
-        payload[field.key] = raw;
-      }
+      let raw = String(el.value || '').trim();
+      if (field.uppercase) raw = raw.toUpperCase();
+      payload[field.key] = raw;
 
       if (field.required && !payload[field.key]) {
         Toast.warning(`Chưa nhập "${field.label}".`);
@@ -354,17 +331,18 @@ export class CatalogsView extends BaseComponent {
     }
 
     // Shipper: tách hậu tố TQ/KTQ nếu người dùng gõ kèm vào tên.
-    // Không tách thì tên xuất ra sẽ thành "... TQ TQ" vì formatShipperName tự thêm hậu tố.
+    // Danh mục chỉ lưu tên công ty; trạng thái thông quan chọn trên từng dòng bảng
+    // kê, vì cùng một công ty có lô thông quan và lô không thông quan.
     let notice = '';
     if (type === 'shippers') {
       const split = splitCustomsSuffix(payload.name);
       if (split.strippedSuffix) {
         payload.name = split.name;
-        payload.customsCleared = split.customsCleared;
-        notice = `Đã tách hậu tố "${split.strippedSuffix}" khỏi tên và đặt trạng thái thông quan tương ứng.`;
+        notice = `Đã bỏ hậu tố "${split.strippedSuffix}" khỏi tên. ` +
+                 `Trạng thái thông quan được chọn trên từng dòng bảng kê, không lưu ở danh mục.`;
       }
       if (!payload.name) {
-        Toast.warning('Tên người gửi không được rỗng sau khi tách hậu tố.');
+        Toast.warning('Tên người gửi không được rỗng sau khi bỏ hậu tố.');
         return;
       }
     }

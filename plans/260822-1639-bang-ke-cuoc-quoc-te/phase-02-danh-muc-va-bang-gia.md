@@ -39,14 +39,32 @@ khoảng trắng (`CO.,LTD.KTQ` vs `CO.,LTD KTQ`). Nếu quy tắc phí dựa v�
 chữ `TQ` trong chuỗi, gõ thiếu chữ `K` là lệch 300.000đ và không có cách nào phát
 hiện. Tách thành checkbox xoá hẳn lớp lỗi này.
 
+**Cờ nằm trên dòng bảng kê, không nằm trên bản ghi shipper** (quyết định của người
+dùng ngày 2026-08-24, sau khi kiểm lại dữ liệu).
+
+Lý do: cột G của file mẫu cho thấy **cùng một công ty xuất hiện ở cả hai dạng** —
+`TNHH COVA TEC KTQ` (R12) và `TNHH COVA TEC TQ` (R14); `COVATEC VIETNAM CO., LTD
+TQ` (R36) và `... KTQ` (R38). Thông quan vì thế là dữ kiện của **từng lô hàng**,
+không phải thuộc tính của công ty.
+
+Nếu đặt cờ trên bản ghi shipper thì mỗi công ty phải có 2 bản ghi (TQ và KTQ), và
+chọn nhầm biến thể trong select vẫn lệch 300.000đ mà không có dấu hiệu gì — chỉ
+chuyển rủi ro từ gõ sang chọn chứ không xoá.
+
 ```javascript
-Shipper { id, name: "COVATEC VIETNAM CO., LTD", customsCleared: true }
-// hiển thị + xuất Excel: `${name} ${customsCleared ? "TQ" : "KTQ"}`
+Shipper      { id, name: "COVATEC VIETNAM CO., LTD" }   // một bản ghi mỗi công ty
+ManifestLine { shipperId, customsCleared: true, ... }   // cờ ở đây
+
+// Cột SHIPPER khi xuất Excel:
+formatShipperName(shipper, line.customsCleared)  // -> "COVATEC VIETNAM CO., LTD TQ"
 ```
 
-**Hệ quả khi migrate:** danh mục phải nhập tên **đã bỏ hậu tố**. Nếu người dùng gõ
-tên còn chứa ` TQ`/` KTQ` ở cuối, form phải tự tách hậu tố ra cờ và cảnh báo, nếu
-không file xuất sẽ ra `... TQ TQ`.
+`formatShipperName` là hàm **duy nhất** được phép sinh hậu tố, nên không nơi nào
+tự nối chuỗi rồi ra `... TQ TQ`.
+
+**Hệ quả khi nhập danh mục:** tên phải **không có hậu tố**. Nếu người dùng gõ kèm
+` TQ`/` KTQ`, form tự bỏ hậu tố và giải thích rằng trạng thái thông quan chọn trên
+từng dòng bảng kê.
 
 ### Bảng giá theo khách hàng
 
@@ -80,8 +98,7 @@ qua tham số để việc thêm `tiers[]` sau này không phải viết lại c
 ```javascript
 const CATALOG_DEFS = {
   shippers:   { label: "Shipper (Người gửi)", fields: [
-                  { key: "name", label: "Tên", type: "text", required: true },
-                  { key: "customsCleared", label: "Thông quan (TQ)", type: "checkbox" }
+                  { key: "name", label: "Tên", type: "text", required: true }
                ]},
   consignees: { label: "Consignee (Người nhận)", fields: [ /* name */ ]},
   flights:    { label: "Mã chuyến bay", fields: [ /* code */ ]},
@@ -90,10 +107,11 @@ const CATALOG_DEFS = {
 };
 ```
 
-Dữ liệu mồi từ file mẫu để người dùng không phải nhập tay từ đầu: Flight
-`OZ734`, `KJ374`; Port `HAN`, `SEL`; Item `PIN BLOCK`, `JIG`, `PINBLOCK PART`;
-Consignee 6 biến thể `COVATEC CO.,LTD.` (`JOONGBU BRANCH`, `DREAM TECH`,
-`YEOMYEONG`, …) — nhập như **gợi ý một lần**, không phải demo data cứng.
+Dữ liệu mồi từ file mẫu để người dùng không phải nhập tay từ đầu: Shipper 3 công
+ty (không nhân đôi theo TQ/KTQ); Flight `OZ734`, `KJ374`; Port `HAN`, `SEL`; Item
+`PIN BLOCK`, `JIG`, `PINBLOCK PART`; Consignee các biến thể `COVATEC CO.,LTD.`
+(`JOONGBU BRANCH`, `DREAM TECH`, `YEOMYEONG`) — nhập như **gợi ý một lần**, không
+phải demo data cứng.
 
 ### Lưu trữ
 
@@ -158,8 +176,9 @@ vừa lẫn dữ liệu giữa hai tài khoản.
 ## Success Criteria
 
 - [x] Tạo/sửa/xoá được cả 5 danh mục qua một component chung, không code lặp
-- [x] Shipper lưu `customsCleared` độc lập với tên
-- [x] Gõ tên `COVATEC CO.,LTD TQ` vào form → lưu thành name `COVATEC CO.,LTD` + cờ bật
+- [x] Danh mục shipper là một bản ghi mỗi công ty, không mang cờ thông quan
+- [x] Gõ tên `COVATEC CO.,LTD TQ` vào form → lưu `COVATEC CO.,LTD`, có giải thích
+- [x] Một bản ghi shipper phục vụ được cả dòng TQ và dòng KTQ qua `formatShipperName`
 - [x] Tạo được bảng giá COVATEC: `baseFee = 20000`, `stepFee = 8750`, `fixedFees`
       có phí giám sát tờ khai 300.000đ với `requiresCustoms: true`
 - [x] Xoá bản ghi đang được tham chiếu bị chặn kèm thông báo rõ đang bị dùng ở đâu

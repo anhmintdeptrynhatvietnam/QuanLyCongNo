@@ -21,8 +21,8 @@ import { CUSTOMS_SUFFIXES, CATALOG_TYPES, PORT_KINDS } from '../config.js';
  *
  * @param {string} rawName Tên như người dùng gõ
  * @returns {{name: string, customsCleared: boolean|null, strippedSuffix: string|null}}
- *   `customsCleared = null` nghĩa là không tìm thấy hậu tố -> giữ nguyên lựa chọn
- *   checkbox của người dùng.
+ *   `customsCleared = null` nghĩa là tên không mang hậu tố, nên không suy ra được
+ *   trạng thái thông quan; nơi gọi phải lấy giá trị từ dòng bảng kê.
  */
 export function splitCustomsSuffix(rawName) {
   const input = String(rawName ?? '').trim();
@@ -44,16 +44,23 @@ export function splitCustomsSuffix(rawName) {
 }
 
 /**
- * Dựng tên shipper để hiển thị và xuất Excel, kèm hậu tố thông quan.
+ * Dựng chuỗi cột SHIPPER của bảng kê: tên công ty kèm hậu tố thông quan.
+ *
+ * Cờ thông quan là tham số riêng vì nó thuộc về từng dòng hàng, không thuộc về
+ * công ty: trong file gốc cùng một công ty xuất hiện ở cả hai dạng (dòng R36
+ * "COVATEC VIETNAM CO., LTD TQ" và R38 "... KTQ").
+ *
  * Đây là hàm duy nhất được phép sinh hậu tố, để không nơi nào tự nối chuỗi rồi
  * ra "... TQ TQ".
  *
- * @param {{name: string, customsCleared: boolean}} shipper
+ * @param {{name: string}|string} shipper Bản ghi danh mục hoặc tên
+ * @param {boolean} customsCleared Lấy từ dòng bảng kê
  * @returns {string}
  */
-export function formatShipperName(shipper) {
-  if (!shipper || !shipper.name) return '';
-  return `${shipper.name} ${shipper.customsCleared ? 'TQ' : 'KTQ'}`;
+export function formatShipperName(shipper, customsCleared) {
+  const name = typeof shipper === 'string' ? shipper : (shipper && shipper.name);
+  if (!name) return '';
+  return `${name} ${customsCleared ? 'TQ' : 'KTQ'}`;
 }
 
 /**
@@ -142,13 +149,11 @@ export function findRateCard(rateCards, partnerId, pol, pod) {
  * Chỉ là gợi ý để người dùng không phải gõ lại từ đầu — sửa/xóa được bình thường.
  */
 export const SEED_CATALOGS = {
+  // Một bản ghi cho mỗi công ty; trạng thái thông quan chọn trên từng dòng bảng kê
   shippers: [
-    { name: 'COVATEC VIETNAM CO., LTD', customsCleared: true },
-    { name: 'COVATEC VIETNAM CO., LTD', customsCleared: false },
-    { name: 'TNHH COVA TEC', customsCleared: true },
-    { name: 'TNHH COVA TEC', customsCleared: false },
-    { name: 'COVATEC CO.,LTD.', customsCleared: true },
-    { name: 'COVATEC CO.,LTD.', customsCleared: false }
+    { name: 'COVATEC VIETNAM CO., LTD' },
+    { name: 'TNHH COVA TEC' },
+    { name: 'COVATEC CO.,LTD.' }
   ],
   consignees: [
     { name: 'COVATEC CO.,LTD.' },
@@ -173,24 +178,20 @@ export const SEED_CATALOGS = {
 
 /**
  * Kiểm tra trùng lặp trong một danh mục.
- * So sánh không phân biệt hoa/thường và khoảng trắng thừa; với shipper thì cờ
- * thông quan cũng tính vào định danh (TQ và KTQ là hai lựa chọn khác nhau).
+ * So sánh theo tên (hoặc mã), không phân biệt hoa/thường và khoảng trắng thừa.
  *
  * @param {Array} entries
  * @param {Object} candidate
- * @param {string} type
  * @param {string|null} excludeId
  * @returns {Object|null} Bản ghi bị trùng, hoặc null
  */
-export function findDuplicateEntry(entries, candidate, type, excludeId = null) {
+export function findDuplicateEntry(entries, candidate, excludeId = null) {
   const norm = (v) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
   const keyOf = (e) => norm(e.name) || norm(e.code);
 
   return (entries || []).find(e => {
     if (excludeId && e.id === excludeId) return false;
-    if (keyOf(e) !== keyOf(candidate)) return false;
-    if (type === 'shippers') return Boolean(e.customsCleared) === Boolean(candidate.customsCleared);
-    return true;
+    return keyOf(e) === keyOf(candidate);
   }) || null;
 }
 

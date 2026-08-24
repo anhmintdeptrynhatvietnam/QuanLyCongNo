@@ -35,8 +35,8 @@ xuất Excel gửi khách và ghi nhận công nợ phải thu.
    trong khoảng dữ liệu; ngày chưa có tỷ giá được cảnh báo rõ ràng.
 2. Engine tái tạo đúng **cả 42/42 dòng** của `COVATEC 2026.06.xlsx`, cột
    `TOTAL AMOUNT (VND)` khớp **chính xác đến đồng**, và tổng bằng `147.419.655`.
-3. Shipper là danh mục có cờ `customsCleared`; engine tự cộng phí giám sát tờ
-   khai 300.000đ khi cờ bật, và không cộng khi tắt.
+3. Mỗi dòng bảng kê có cờ `customsCleared`; engine tự cộng phí giám sát tờ khai
+   300.000đ khi cờ bật, và không cộng khi tắt. Danh mục shipper chỉ lưu tên công ty.
 4. Thêm dòng mới bằng nút `[+]`, các cột danh mục hiện dưới dạng select và kế
    thừa giá trị của dòng liền trước.
 5. Xuất file Excel có tiêu đề, khối thông tin người mua, kẻ khung, dòng Grand
@@ -50,7 +50,7 @@ xuất Excel gửi khách và ghi nhận công nợ phải thu.
 |---|---|---|---|
 | 01 | [Tỷ giá theo ngày](phase-01-ty-gia-theo-ngay.md) | — | Complete |
 | 02 | [Danh mục dùng chung & bảng giá](phase-02-danh-muc-va-bang-gia.md) | 01 | Complete |
-| 03 | [Engine tính toán](phase-03-engine-tinh-toan.md) | 01, 02 | Not started |
+| 03 | [Engine tính toán](phase-03-engine-tinh-toan.md) | 01, 02 | Complete |
 | 04 | [Giao diện bảng kê](phase-04-giao-dien-bang-ke.md) | 03 | Not started |
 | 05 | [Xuất Excel gửi khách](phase-05-xuat-excel.md) | 04 | Not started |
 | 06 | [Ghi nhận công nợ phải thu](phase-06-cong-no-phai-thu.md) | 04 | Not started |
@@ -68,33 +68,62 @@ lại trên dữ liệu thật:
 | `TOTAL_VND = ROUND(TOTAL_KRW × rate + phí_VND, 0)` | công thức `Y12`, `Y13`, … | khớp 6 dòng kiểm tay |
 | `rate` tra theo ngày từ file tỷ giá | `Z12 = VLOOKUP(B12,[2]Sheet1!$B:$D,3,0)`; `externalLink2.xml.rels` → `4- TH TỈ GIÁ.xlsx` | link ngoài trỏ đúng file |
 | Shipper hậu tố `TQ` → +300.000đ; `KTQ` → không | khách hàng xác nhận qua chat | **20/20** dòng `TQ` có phí, **22/22** dòng `KTQ` không có; `20 × 300.000 = 6.000.000` = đúng ô `T54` |
-| Cột `PHÍ PICK` chưa từng được dùng | quét toàn bộ cột S | 300.000đ thực chất là phí giám sát tờ khai (cột T) bị gõ sai cột |
+| Thông quan là dữ kiện của **từng lô hàng**, không phải của công ty | cột G file mẫu | cùng một công ty xuất hiện cả hai dạng: `TNHH COVA TEC KTQ` (R12) và `TNHH COVA TEC TQ` (R14); `COVATEC VIETNAM CO., LTD TQ` (R36) và `... KTQ` (R38) |
+| `TOTAL KRW = SUM(O:R)` — **không** gồm cột U, V, W | công thức `X12`…`X53` | 42/42 dòng dùng đúng công thức này |
+| 300.000đ nằm ở cột `T` (PHÍ GIÁM SÁT TỜ KHAI) | 20 ô, đối chiếu `T54` | `20 × 300.000 = 6.000.000` = `T54`, khớp |
+| Cột `PHÍ PICK` (S) chưa từng được dùng | quét cột S | 0/42 ô có dữ liệu |
 
-**FUEL không tính được**: cùng `C.WT = 3` có dòng 5.000, dòng 6.000, dòng 50.000.
-Mọi dòng `C.WT = 1` đều đúng 5.000 (11/11) → sàn tối thiểu 5.000. Kết luận: phí
-nhiên liệu do hãng bay báo theo từng lô → nhập tay, mặc định 5.000.
+**Phí theo từng lô nằm ở `DELIVERY CHARGE` (cột R), không phải `FUEL`**: cột `FUEL`
+và `CUSTOMS CHARGE` trống cả 42 dòng. Không tính được từ số kg — cùng `C.WT = 3` có
+dòng 5.000, dòng 6.000, dòng 50.000 — nên nhập tay, mặc định 5.000 (sàn quan sát
+được).
 
-**Cột `CUSTOMS CHARGE`, `DELIVERY CHARGE`, `Phí Hàn thu hộ`, `OVER CHARGE`,
-`OTHER CHARGE` trống toàn bộ tháng 6** → vẫn giữ trong schema để tổng quát, nhưng
-UI để mặc định 0 và không bắt buộc nhập.
+**Cột `Phí Hàn thu hộ` (U), `OVER CHARGE` (V), `OTHER CHARGE` (W)** không có dữ
+liệu thật, và công thức `SUM(O:R)` của file **không** cộng chúng vào TOTAL KRW.
+Engine giữ nguyên hành vi này để tái tạo khớp tuyệt đối — xem open question #5.
 
 ## Tình trạng file nguồn
 
-`COVATEC 2026.06.xlsx` đang hỏng về cấu trúc, đây là một lý do chính để làm feature:
+**Đính chính (2026-08-24).** Bản kế hoạch đầu tiên ghi rằng file nguồn bị lệch cột
+và "chỉ còn sống nhờ cached value". **Điều đó sai.** Nó xuất phát từ lỗi trong một
+script dump XML dùng tạm: regex tách ô coi thẻ rỗng tự đóng `<c r="P12"/>` là thẻ
+mở, rồi ngốn luôn các ô phía sau, nên giá trị bị gán nhầm nhãn cột.
 
-- Công thức `=SUM(O:R)` (tổng KRW) nằm rải rác **sai cột** giữa các dòng: dòng
-  12/17/34 ở cột `S`, dòng 14/15 ở cột `U`, dòng 13/16/20 ở cột `X`.
-- `Y = ROUND(X*Z+T,0)` luôn trỏ `X`, nên ở các dòng tổng KRW không nằm ở `X` thì
-  `X` đang trống — giá trị đúng chỉ còn tồn tại dưới dạng **cached value**.
-- [Inference] Ép recalculate (F9 / sửa một ô) sẽ làm phần lớn cột
-  `TOTAL AMOUNT (VND)` về 0 hoặc sai.
-- Dòng Grand Total lệch cột: tổng FUEL `891.100` nằm dưới header
-  `DELIVERY CHARGE`, còn `P54`/`Q54`/`S54` = 0.
+Kiểm lại bằng SheetJS và bằng XML thô — hai nguồn khớp nhau — thì file nguồn
+**đúng cấu trúc**:
+
+| Kiểm chứng | Kết quả |
+|---|---|
+| Tổng từng cột ở dòng 54 so với tổng thực của chính cột đó | **khớp 11/11 cột** |
+| Công thức trên 42 dòng | nhất quán tuyệt đối: `O` = bảng giá (42/42), `X = SUM(O:R)` (42/42), `Y = ROUND(X*Z+T,0)` (42/42) |
+| 20 ô giá trị `300.000` | nằm **đúng** cột `T` (PHÍ GIÁM SÁT TỜ KHAI), không phải cột `S` |
+| `T54 = 6.000.000` | = 20 × 300.000, khớp |
+| `R54 = 891.100` | = tổng thực cột `R` (DELIVERY CHARGE), khớp |
+
+Vấn đề thật của file chỉ còn **một** điểm, và nó vẫn là lý do đáng làm feature:
+
 - Cùng một shipper được gõ **4 kiểu tên** trong một tháng (`TNHH COVA TEC`,
   `COVATEC CO.,LTD.`, `COVATEC CO.,LTD`, `COVATEC VIETNAM CO., LTD`) cộng biến
-  thể khoảng trắng (`CO.,LTD.KTQ` vs `CO.,LTD KTQ`). Vì quy tắc phí dựa vào việc
-  dò chữ `TQ` trong tên gõ tay, gõ thiếu chữ `K` là lệch 300.000đ mà không ai
-  phát hiện.
+  thể phân tách hậu tố (`CO.,LTD.KTQ` vs `CO.,LTD KTQ`). Vì phí 300.000đ phụ
+  thuộc vào hậu tố `TQ`/`KTQ` trong tên gõ tay, gõ thiếu chữ `K` là lệch tiền mà
+  không có dấu hiệu nào.
+
+### Cột nào thực sự được dùng
+
+| Cột | Header | Số ô có dữ liệu / 42 |
+|---|---|---|
+| O | FREIGHT CHARGE (KRW) | 42 (công thức bảng giá) |
+| P | FUEL | **0** |
+| Q | CUSTOMS CHARGE | **0** |
+| R | DELIVERY CHARGE (KRW) | 42 — đây là nơi phí theo từng lô được nhập |
+| S | PHÍ PICK | **0** |
+| T | PHÍ GIÁM SÁT TỜ KHAI (VND) | 20 (đúng các dòng `TQ`) |
+| U | Phí Hàn thu hộ | **0** |
+| V / W | OVER / OTHER CHARGE | 8 ô nhưng toàn bộ bằng 0 |
+
+Suy ra: phí biến đổi theo từng lô nằm ở **DELIVERY CHARGE**, không phải `FUEL`.
+Vẫn không tính được từ số kg (cùng 3 kg có dòng 5.000, dòng 6.000, dòng 50.000),
+sàn quan sát được là 5.000 → nhập tay, mặc định 5.000.
 
 ## Data model
 
@@ -103,7 +132,7 @@ UI để mặc định 0 và không bắt buộc nhập.
 ExchangeRate { date, krwToVnd, usdToVnd, source }
 
 // Danh mục dùng chung
-Shipper   { id, name, customsCleared }   // customsCleared → hậu tố TQ/KTQ + phí 300k
+Shipper   { id, name }                   // KHÔNG có cờ thông quan - xem ghi chú dưới
 Consignee { id, name }
 Flight    { id, code }                   // OZ734, KJ374
 Port      { id, code, name, kind }       // HAN / SEL; kind: POL | POD | BOTH
@@ -122,7 +151,8 @@ ManifestSheet { id, sheetNo, issueDate, partnerId, partnerName, rateCardId,
                 updatedAt, updatedBy }   // chống ghi đè khi 2 người sửa cùng lúc
 
 ManifestLine { no, date, blNo, flightCode, itemsText,
-               shipperId, consigneeId, mode, pol, pod, ct, gwt, cwt,
+               shipperId, consigneeId, customsCleared,   // cờ TQ/KTQ nằm ở ĐÂY
+               mode, pol, pod, ct, gwt, cwt,
                freightCharge, fuel, customsCharge, deliveryCharge,   // KRW
                pickFee, declarationSupervisionFee,                   // VND
                krwCollectedForKorea, overCharge, otherCharge,        // KRW
@@ -186,7 +216,13 @@ Phase 01–06 (YAGNI), nhưng phải theo dõi signal ở trên.
    nghìn … đồng"`, còn file mẫu ô `A58` ghi `"… bốn trăm mười chín ngàn, … đồng
    chẵn"` (khác 3 điểm: *ngàn* vs *nghìn*, có dấu phẩy, có *chẵn*). Đây là chữ
    khách đọc trên file nhận được. Giữ quy ước của app hay khớp file khách đang
-   quen? Xem Phase 03.
+   quen? **Tạm chọn: khớp file khách** — đã cài trong `manifestAmountInWords()`.
+5. **Cột `Phí Hàn thu hộ` (U), `OVER CHARGE` (V), `OTHER CHARGE` (W) có phải cộng
+   vào `TOTAL AMOUNT (KRW)` không?** Công thức `SUM(O:R)` của file **không** cộng
+   chúng, và cả 42 dòng đều bằng 0 nên không suy ra được ý định. Engine hiện làm
+   đúng như file. Rủi ro: nếu về sau kế toán nhập một khoản `OVER CHARGE`, số tiền
+   đó sẽ **không** vào tổng — giống hệt hành vi Excel hiện tại, nhưng dễ gây bất
+   ngờ. Cần xác nhận trước Phase 04 để quyết định cột đó có cho nhập hay không.
 
 ## Red Team Review
 

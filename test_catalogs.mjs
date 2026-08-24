@@ -91,7 +91,9 @@ assert("null không lỗi", splitCustomsSuffix(null).name === '');
 
 console.log("\n=== formatShipperName: dựng lại đúng chuỗi gốc ===\n");
 
-// Vòng tách rồi dựng lại phải ra đúng chuỗi ban đầu, nếu không file xuất sẽ lệch
+// Cờ thông quan thuộc về từng DÒNG, không thuộc công ty: trong file gốc cùng một
+// công ty xuất hiện cả hai dạng (R36 "... TQ" và R38 "... KTQ").
+// Vòng tách rồi dựng lại phải ra đúng chuỗi ban đầu, nếu không file xuất sẽ lệch.
 const roundTrip = [
   'TNHH COVA TEC KTQ',
   'TNHH COVA TEC TQ',
@@ -102,39 +104,45 @@ const roundTrip = [
 let rtOk = 0;
 for (const original of roundTrip) {
   const split = splitCustomsSuffix(original);
-  const rebuilt = formatShipperName({ name: split.name, customsCleared: split.customsCleared });
+  const rebuilt = formatShipperName({ name: split.name }, split.customsCleared);
   if (rebuilt === original) rtOk++;
   else console.log(`   lệch: "${original}" -> "${rebuilt}"`);
 }
 assert("Tách rồi dựng lại khớp nguyên văn 5/5 tên thật", rtOk === 5, `khớp ${rtOk}/5`);
 
-assert("Không sinh hậu tố lặp",
-  formatShipperName({ name: 'ABC', customsCleared: true }) === 'ABC TQ');
-assert("Cờ tắt -> KTQ",
-  formatShipperName({ name: 'ABC', customsCleared: false }) === 'ABC KTQ');
-assert("Shipper rỗng trả chuỗi rỗng", formatShipperName(null) === '');
+assert("Cờ của dòng bật -> TQ",
+  formatShipperName({ name: 'ABC' }, true) === 'ABC TQ');
+assert("Cờ của dòng tắt -> KTQ",
+  formatShipperName({ name: 'ABC' }, false) === 'ABC KTQ');
+assert("Nhận cả tham số là chuỗi tên",
+  formatShipperName('ABC', true) === 'ABC TQ');
+assert("Shipper rỗng trả chuỗi rỗng", formatShipperName(null, true) === '');
+
+// Cùng MỘT bản ghi shipper dùng được cho cả hai trạng thái - đây là điểm mấu chốt
+// của việc chuyển cờ sang dòng
+const oneShipper = { id: 'S1', name: 'COVATEC VIETNAM CO., LTD' };
+assert("Một bản ghi shipper phục vụ được cả dòng TQ và dòng KTQ",
+  formatShipperName(oneShipper, true) === 'COVATEC VIETNAM CO., LTD TQ' &&
+  formatShipperName(oneShipper, false) === 'COVATEC VIETNAM CO., LTD KTQ');
 
 console.log("\n=== findDuplicateEntry ===\n");
 
-const shippers = [
-  { id: 'S1', name: 'COVATEC VIETNAM CO., LTD', customsCleared: true },
-  { id: 'S2', name: 'COVATEC VIETNAM CO., LTD', customsCleared: false }
-];
+const shippers = [{ id: 'S1', name: 'COVATEC VIETNAM CO., LTD' }];
 
-assert("Cùng tên + cùng cờ TQ -> trùng",
-  findDuplicateEntry(shippers, { name: 'COVATEC VIETNAM CO., LTD', customsCleared: true }, 'shippers')?.id === 'S1');
-assert("Cùng tên nhưng khác cờ -> KHÔNG trùng (TQ và KTQ là hai lựa chọn)",
-  findDuplicateEntry(shippers, { name: 'COVATEC VIETNAM CO., LTD', customsCleared: false }, 'shippers')?.id === 'S2');
+assert("Cùng tên -> trùng",
+  findDuplicateEntry(shippers, { name: 'COVATEC VIETNAM CO., LTD' })?.id === 'S1');
 assert("Khác hoa/thường và khoảng trắng thừa vẫn tính là trùng",
-  findDuplicateEntry(shippers, { name: '  covatec   vietnam co., ltd ', customsCleared: true }, 'shippers')?.id === 'S1');
+  findDuplicateEntry(shippers, { name: '  covatec   vietnam co., ltd ' })?.id === 'S1');
 assert("Bỏ qua chính bản ghi đang sửa",
-  findDuplicateEntry(shippers, { name: 'COVATEC VIETNAM CO., LTD', customsCleared: true }, 'shippers', 'S1') === null);
+  findDuplicateEntry(shippers, { name: 'COVATEC VIETNAM CO., LTD' }, 'S1') === null);
+assert("Tên khác thì không trùng",
+  findDuplicateEntry(shippers, { name: 'TNHH COVA TEC' }) === null);
 
 const flights = [{ id: 'F1', code: 'OZ734' }];
 assert("Danh mục theo mã cũng phát hiện trùng",
-  findDuplicateEntry(flights, { code: 'OZ734' }, 'flights')?.id === 'F1');
+  findDuplicateEntry(flights, { code: 'OZ734' })?.id === 'F1');
 assert("Mã khác thì không trùng",
-  findDuplicateEntry(flights, { code: 'KJ374' }, 'flights') === null);
+  findDuplicateEntry(flights, { code: 'KJ374' }) === null);
 
 console.log("\n=== findCatalogUsage: chặn xóa khi đang được dùng ===\n");
 
@@ -197,8 +205,9 @@ console.log("\n=== Cấu hình & registry ===\n");
 assert("Có đủ 5 loại danh mục", CATALOG_TYPES.length === 5);
 assert("Mỗi loại đều có định nghĩa field",
   CATALOG_TYPES.every(t => CATALOG_DEFS[t] && Array.isArray(CATALOG_DEFS[t].fields) && CATALOG_DEFS[t].fields.length > 0));
-assert("Shipper có field customsCleared kiểu checkbox",
-  CATALOG_DEFS.shippers.fields.some(f => f.key === 'customsCleared' && f.type === 'checkbox'));
+assert("Danh mục shipper KHÔNG còn field customsCleared (cờ nằm trên dòng bảng kê)",
+  !CATALOG_DEFS.shippers.fields.some(f => f.key === 'customsCleared'),
+  JSON.stringify(CATALOG_DEFS.shippers.fields.map(f => f.key)));
 
 const branchKeys = PERSISTED_BRANCHES.map(b => b.key);
 assert("catalogs có trong registry lưu trữ", branchKeys.includes('catalogs'));
@@ -230,6 +239,10 @@ assert("Gợi ý có cả 5 nhóm",
 assert("Gợi ý shipper KHÔNG chứa hậu tố TQ/KTQ trong tên",
   SEED_CATALOGS.shippers.every(s => splitCustomsSuffix(s.name).strippedSuffix === null),
   JSON.stringify(SEED_CATALOGS.shippers.map(s => s.name)));
+assert("Gợi ý shipper là một bản ghi cho mỗi công ty, không nhân đôi theo TQ/KTQ",
+  SEED_CATALOGS.shippers.length === 3 &&
+  SEED_CATALOGS.shippers.every(s => !('customsCleared' in s)),
+  JSON.stringify(SEED_CATALOGS.shippers));
 assert("Gợi ý có mã chuyến bay thật trong file mẫu",
   SEED_CATALOGS.flights.some(f => f.code === 'OZ734') && SEED_CATALOGS.flights.some(f => f.code === 'KJ374'));
 assert("Gợi ý có tuyến HAN và SEL",
@@ -238,7 +251,7 @@ assert("Gợi ý không có bản ghi trùng nhau trong chính nó",
   CATALOG_TYPES.every(t => {
     const acc = [];
     for (const e of SEED_CATALOGS[t]) {
-      if (findDuplicateEntry(acc, e, t)) return false;
+      if (findDuplicateEntry(acc, e)) return false;
       acc.push({ ...e, id: `x${acc.length}` });
     }
     return true;
@@ -253,18 +266,18 @@ stateStore.resetAllData();
 assert("Sau reset, danh mục có đủ 5 nhóm rỗng",
   CATALOG_TYPES.every(t => stateStore.state.catalogs[t].length === 0));
 
-const addRes = stateStore.upsertCatalogEntry('shippers', { name: 'COVATEC VIETNAM CO., LTD', customsCleared: true });
+const addRes = stateStore.upsertCatalogEntry('shippers', { name: 'COVATEC VIETNAM CO., LTD' });
 assert("Thêm shipper thành công và được gán id", addRes.ok && Boolean(addRes.entry.id), JSON.stringify(addRes));
 
-const dupRes = stateStore.upsertCatalogEntry('shippers', { name: 'COVATEC VIETNAM CO., LTD', customsCleared: true });
+const dupRes = stateStore.upsertCatalogEntry('shippers', { name: 'COVATEC VIETNAM CO., LTD' });
 assert("Thêm trùng bị chặn kèm lý do", !dupRes.ok && dupRes.error.includes('đã có'), JSON.stringify(dupRes));
 
-const variantRes = stateStore.upsertCatalogEntry('shippers', { name: 'COVATEC VIETNAM CO., LTD', customsCleared: false });
-assert("Cùng tên khác cờ thông quan thì thêm được", variantRes.ok, JSON.stringify(variantRes));
+const secondRes = stateStore.upsertCatalogEntry('shippers', { name: 'TNHH COVA TEC' });
+assert("Thêm công ty khác thì được", secondRes.ok, JSON.stringify(secondRes));
 assert("Danh mục shipper có 2 bản ghi", stateStore.state.catalogs.shippers.length === 2);
 
 const shipperId = addRes.entry.id;
-stateStore.upsertCatalogEntry('shippers', { id: shipperId, name: 'COVATEC VIETNAM CO.,LTD', customsCleared: true });
+stateStore.upsertCatalogEntry('shippers', { id: shipperId, name: 'COVATEC VIETNAM CO.,LTD' });
 assert("Sửa tên shipper thành công",
   stateStore.state.catalogs.shippers.find(s => s.id === shipperId).name === 'COVATEC VIETNAM CO.,LTD');
 
@@ -383,8 +396,8 @@ const html = view.render({
   catalogs: {
     ...emptyCatalogs(),
     shippers: [
-      { id: 'S1', name: 'COVATEC VIETNAM CO., LTD', customsCleared: true },
-      { id: 'S2', name: 'COVATEC VIETNAM CO., LTD', customsCleared: false }
+      { id: 'S1', name: 'COVATEC VIETNAM CO., LTD' },
+      { id: 'S2', name: 'TNHH COVA TEC' }
     ]
   },
   rateCards: [],
@@ -393,13 +406,13 @@ const html = view.render({
 
 assert("Hiện tab cho cả 5 danh mục + bảng giá",
   CATALOG_TYPES.every(t => html.includes(`data-tab="${t}"`)) && html.includes('data-tab="rateCards"'));
-assert("Cột hiển thị đúng chuỗi sẽ xuất ra bảng kê",
-  html.includes('COVATEC VIETNAM CO., LTD TQ') && html.includes('COVATEC VIETNAM CO., LTD KTQ'),
-  "không thấy chuỗi có hậu tố trong bảng");
+assert("Bảng shipper hiện tên công ty",
+  html.includes('COVATEC VIETNAM CO., LTD') && html.includes('TNHH COVA TEC'));
+assert("Bảng shipper KHÔNG hiện hậu tố TQ/KTQ (trạng thái nằm trên dòng bảng kê)",
+  !html.includes('COVATEC VIETNAM CO., LTD TQ') && !html.includes('KTQ'),
+  "danh mục vẫn còn hậu tố");
 assert("Không dùng class badge chưa tồn tại",
   !html.includes('badge-success') && !html.includes('badge-neutral'));
-assert("Badge thông quan dùng class có định nghĩa CSS",
-  html.includes('badge-customs-yes') && html.includes('badge-customs-no'));
 
 view.activeTab = 'rateCards';
 const rateHtml = view.render({ catalogs: emptyCatalogs(), rateCards: [], partners: [] });

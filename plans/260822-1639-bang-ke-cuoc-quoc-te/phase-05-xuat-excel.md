@@ -82,15 +82,23 @@ viện là quyết định có ảnh hưởng, cần hỏi người dùng trư�
 Thông tin công ty lấy từ `state.settings` (module Cài đặt đã có), **không
 hardcode** "CÔNG TY TNHH MEI VINA".
 
-### Sửa lỗi lệch cột của file mẫu
+### Bố cục cột: sao lại đúng như file gốc
 
-Dòng Grand Total của file mẫu bị lệch: tổng FUEL `891.100` nằm dưới header
-`DELIVERY CHARGE`, `P54`/`Q54`/`S54` = 0, và 300.000đ/dòng bị gõ ở cột `PHÍ PICK`
-trong khi tổng của nó lại nằm đúng ở cột `PHÍ GIÁM SÁT TỜ KHAI`.
+**Đính chính (2026-08-24):** bản kế hoạch trước ghi rằng dòng Grand Total của file
+mẫu bị lệch cột và app phải "sửa lại". Kiểm lại bằng SheetJS thì **file gốc đúng
+cấu trúc** — tổng của cả 11 cột đều khớp tổng thực của chính cột đó (xem mục "Tình
+trạng file nguồn" trong `plan.md`). Không có gì phải sửa.
 
-File do app xuất ra phải **đặt đúng cột**. Đây là thay đổi nhìn thấy được so với
-file khách đang nhận, nên phải nói trước với người dùng: con số tổng không đổi,
-chỉ nằm đúng cột.
+Nên file xuất ra chỉ cần **sao đúng bố cục cột của file gốc**:
+
+- phí biến đổi theo từng lô → cột **R** (`DELIVERY CHARGE`), không phải cột `FUEL`;
+- phí giám sát tờ khai 300.000đ → cột **T** (`PHÍ GIÁM SÁT TỜ KHAI (VND)`);
+- `TOTAL AMOUNT (KRW)` cột **X** = `SUM(O:R)`;
+- `TOTAL AMOUNT (VND)` cột **Y** = `ROUND(X × Z + T, 0)`;
+- tỷ giá của dòng → cột **Z** (`REMARK` theo header, nhưng thực tế chứa tỷ giá).
+
+Cột `FUEL`, `CUSTOMS CHARGE`, `PHÍ PICK`, `Phí Hàn thu hộ` vẫn xuất ra (giữ đúng
+số cột để kế toán đối chiếu bằng mắt) nhưng để trống như file gốc.
 
 ## Related Code Files
 
@@ -109,7 +117,7 @@ chỉ nằm đúng cột.
    - `applyLayout(worksheet)` → merges, `!cols`, `!rows`, style viền/đậm/wrap
    - `exportManifestToExcel(manifest, …)` → ghi file
 4. Tên shipper xuất kèm hậu tố: `` `${shipper.name} ${shipper.customsCleared ? "TQ" : "KTQ"}` ``.
-5. Dòng tổng đặt đúng cột (xem trên).
+5. Dòng tổng sao đúng bố cục cột của file gốc (xem trên).
 6. Đối chiếu bằng mắt với file mẫu; kiểm tra bản in A4 ngang.
 
 ## Success Criteria
@@ -121,7 +129,7 @@ chỉ nằm đúng cột.
 - [ ] `Tổng Giá trị thanh toán` = tổng cột `TOTAL AMOUNT (VND)`
 - [ ] `Bằng chữ` khớp số tiền **và** đúng quy ước đã chốt ở open question #4
       (red team #5)
-- [ ] Các tổng nằm đúng cột header của chúng
+- [ ] Các tổng nằm đúng cột header của chúng, khớp bố cục file gốc
 - [ ] Mở bằng Excel không có cảnh báo file lỗi
 - [ ] In A4 ngang không bị cắt cột
 
@@ -136,9 +144,9 @@ chỉ nằm đúng cột.
 đường **ghi** bảng kê; giữ `xlsx` gốc cho mọi đường **đọc** đang có. Hai thư viện
 cùng tồn tại là có chủ ý, cần ghi rõ lý do trong `manifest-export.js`.
 
-**File xuất khác file khách đang quen** (do sửa lệch cột) *Signal:* khách phản hồi
-"khác file cũ". *Response:* đã chủ động nêu trước; giữ nguyên số liệu, chỉ đúng
-cột — không tái tạo lại lỗi cũ để cho giống.
+**File xuất khác file khách đang quen** *Signal:* khách phản hồi "khác file cũ".
+*Response:* bố cục cột sao đúng file gốc nên khác biệt duy nhất là phần định dạng;
+đối chiếu trực tiếp với file mẫu trước khi gửi khách lần đầu.
 
 **Tăng ~900 KB CDN** *Signal:* trang tải chậm rõ rệt trên mạng yếu.
 *Response:* nạp thư viện style theo yêu cầu (dynamic `import()` / chèn thẻ script

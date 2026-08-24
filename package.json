@@ -4,9 +4,10 @@
   "description": "Hệ thống Quản lý Công nợ Doanh nghiệp",
   "type": "module",
   "scripts": {
-    "test": "node test_runner_node.mjs && node test_exchange_rates.mjs && node test_catalogs.mjs",
+    "test": "node test_runner_node.mjs && node test_exchange_rates.mjs && node test_catalogs.mjs && node test_manifest_engine.mjs",
     "test:core": "node test_runner_node.mjs",
     "test:rates": "node test_exchange_rates.mjs",
-    "test:catalogs": "node test_catalogs.mjs"
+    "test:catalogs": "node test_catalogs.mjs",
+    "test:engine": "node test_manifest_engine.mjs"
   }
 }
