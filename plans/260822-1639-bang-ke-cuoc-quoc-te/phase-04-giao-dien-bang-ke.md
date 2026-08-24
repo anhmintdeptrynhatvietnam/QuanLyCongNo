@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Giao diện bảng kê"
-status: pending
+status: completed
 priority: P1
 effort: "2d"
 dependencies: [3]
@@ -192,22 +192,22 @@ chỉnh trực tiếp (sinh từ template); có nút sửa riêng nếu cần ov
 
 ## Success Criteria
 
-- [ ] Nhập được 42 dòng liên tục, không mất focus và không mất con trỏ khi gõ
-- [ ] `[+]` thêm dòng kế thừa shipper/consignee/mã CB/POL/POD của dòng trước
-- [ ] Sửa `C.WT` → `FREIGHT`, `TOTAL KRW`, `TOTAL VND` và dòng tổng cập nhật ngay
-- [ ] Dòng có ngày chưa có tỷ giá được đánh dấu, không vào tổng, chặn phát hành
-- [ ] Override một ô đã tính → ô đổi màu, giá trị giữ nguyên sau khi tính lại
-- [ ] Xoá dòng giữa bảng → cột `NO` đánh số lại liên tục
-- [ ] Tổng hiển thị đúng `147.419.655` khi nhập lại dữ liệu tháng 6 của COVATEC
-- [ ] Reload trang giữ nguyên bảng kê đã lưu
-- [ ] Cuộn ngang giữ cố định cột `NO` và `B/L NO`
-- [ ] Gõ `C.WT = 10.5` giữ đúng `10.5`, `FREIGHT` ra `103.125` — không thành
+- [x] Nhập được 42 dòng liên tục, không mất focus và không mất con trỏ khi gõ
+- [x] `[+]` thêm dòng kế thừa shipper/consignee/mã CB/POL/POD của dòng trước
+- [x] Sửa `C.WT` → `FREIGHT`, `TOTAL KRW`, `TOTAL VND` và dòng tổng cập nhật ngay
+- [x] Dòng có ngày chưa có tỷ giá được đánh dấu, không vào tổng, chặn phát hành
+- [x] Override một ô đã tính → ô đổi màu, giá trị giữ nguyên sau khi tính lại
+- [x] Xoá dòng giữa bảng → cột `NO` đánh số lại liên tục
+- [x] Tổng hiển thị đúng `147.419.655` khi nhập lại dữ liệu tháng 6 của COVATEC
+- [x] Reload trang giữ nguyên bảng kê đã lưu
+- [x] Cuộn ngang giữ cố định cột `NO` và `B/L NO`
+- [x] Gõ `C.WT = 10.5` giữ đúng `10.5`, `FREIGHT` ra `103.125` — không thành
       `105` / `930.000` (red team #3)
-- [ ] Grep `currency-input` trong `manifests.js` không khớp ô `gwt` / `cwt` / `rate`
-- [ ] Bấm nav "Bảng kê" thật sự mở được view, không rơi về dashboard (red team #1)
-- [ ] Lưu 2 bảng kê khác nhau từ 2 tab/máy → cả hai đều còn (red team #4)
-- [ ] Lưu bảng kê đã bị nơi khác sửa → bị chặn kèm thông báo nêu ai sửa, lúc nào
-- [ ] Xuất sao lưu JSON có chứa `manifests` (red team #2)
+- [x] Grep `currency-input` trong `manifests.js` không khớp ô `gwt` / `cwt` / `rate`
+- [x] Bấm nav "Bảng kê" thật sự mở được view, không rơi về dashboard (red team #1)
+- [x] Lưu 2 bảng kê khác nhau từ 2 tab/máy → cả hai đều còn (red team #4)
+- [x] Lưu bảng kê đã bị nơi khác sửa → bị chặn kèm thông báo nêu ai sửa, lúc nào
+- [x] Xuất sao lưu JSON có chứa `manifests` (red team #2)
 
 ## Risk Assessment
 

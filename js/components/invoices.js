@@ -370,6 +370,14 @@ export class InvoicesView extends BaseComponent {
                         ${escapeHtml(inv.itemName || inv.title || "Hàng hóa / Dịch vụ")}
                       </div>
                       <div style="font-size: 0.7rem; color: var(--text-muted);">${inv.type === INVOICE_TYPES.RECEIVABLE ? 'Bán ra (Phải thu)' : 'Mua vào (Phải trả)'}</div>
+                      ${inv.sourceType === 'MANIFEST' ? `
+                        <a href="#manifests" class="badge badge-unpaid invoice-source-link"
+                           style="margin-top: 3px; text-decoration: none;"
+                           title="Sinh từ bảng kê cước quốc tế. Sửa số tiền ở bảng kê, không sửa trực tiếp tại đây.">
+                          <i data-lucide="file-spreadsheet" style="width: 11px; height: 11px;"></i>
+                          Từ bảng kê
+                        </a>
+                      ` : ''}
                     </td>
                     <td>
                       <div style="font-weight: 600;">${escapeHtml(inv.partnerName)}</div>

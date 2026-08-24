@@ -28,7 +28,17 @@
    - In Giấy Đề Nghị Thanh Toán A4 đầy đủ 4 ô chữ ký chuẩn doanh nghiệp.
    - Nút hành động 1-Click: Duyệt và tự động sinh UNC/Phiếu Chi cấn trừ công nợ ngay lập tức.
 
-5. **Bảng Tổng Hợp Công Nợ 12 Tháng & Đối Chiếu**:
+5. **Bảng Kê Chi Tiết Cước Quốc Tế (Báo giá vận tải quốc tế)**:
+   - Nhập tỷ giá theo ngày từ file Excel; tra tỷ giá đúng **ngày chuyển hàng**.
+   - Danh mục dùng chung (Shipper, Consignee, Mã chuyến bay, Sân bay, Sản phẩm) và
+     bảng giá cước **riêng theo từng khách hàng + tuyến**.
+   - Bảng nhập inline kiểu Excel: nút `[+]` thêm dòng kế thừa lựa chọn dòng trước,
+     hệ thống tự tính cước và quy đổi VND, cho phép sửa tay đè công thức.
+   - Xuất Excel kẻ khung đầy đủ (tiêu đề, người mua, Grand Total, Bằng chữ, chữ ký)
+     gửi khách được ngay.
+   - Phát hành bảng kê tự sinh hóa đơn **phải thu**, không tạo trùng khi bấm lại.
+
+6. **Bảng Tổng Hợp Công Nợ 12 Tháng & Đối Chiếu**:
    - Bảng tổng hợp công nợ 12 tháng chuẩn kế toán, định dạng số Tabular Numerals thẳng hàng, chống cắt số.
    - Xuất Biên bản đối chiếu công nợ (PDF / Excel) có đầy đủ chữ ký, xác nhận.
    - Nhập/Xuất dữ liệu Excel hàng loạt nhanh chóng.

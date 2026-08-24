@@ -17,6 +17,13 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!--
+    Bản xlsx ở trên bỏ style ô một cách im lặng, nên bảng kê xuất ra sẽ không có
+    kẻ khung. Thư viện ghi style (xlsx-js-style, fork của đúng 0.18.5) được nạp
+    THEO YÊU CẦU trong js/services/manifest-export.js, để không cộng ~425 KB vào
+    lần tải trang đầu và để không ghi đè window.XLSX của mọi đường đọc.
+  -->
+
 
   <!-- Application Stylesheets -->
   <link rel="stylesheet" href="css/variables.css">
@@ -76,6 +83,10 @@
         <a href="#catalogs" class="nav-item" data-view="catalogs">
           <i data-lucide="library"></i>
           <span>Danh Mục & Bảng Giá</span>
+        </a>
+        <a href="#manifests" class="nav-item" data-view="manifests">
+          <i data-lucide="file-spreadsheet"></i>
+          <span>Bảng Kê Cước</span>
         </a>
 
         <div class="nav-section-label">Hệ Thống</div>

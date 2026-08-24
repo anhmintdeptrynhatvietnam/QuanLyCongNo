@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Ghi nhận công nợ phải thu"
-status: pending
+status: completed
 priority: P2
 effort: "0.5d"
 dependencies: [4]
@@ -119,14 +119,14 @@ thanh toán.
 
 ## Success Criteria
 
-- [ ] Phát hành bảng kê COVATEC tháng 6 sinh hóa đơn phải thu `147.419.655đ`
-- [ ] Bấm Phát hành hai lần chỉ có đúng một hóa đơn
-- [ ] Dashboard, tuổi nợ, ma trận 12 tháng tính đúng hóa đơn này mà không sửa code
-- [ ] `recalculatePartnerBalances` cập nhật đúng dư nợ của khách
-- [ ] Hóa đơn đã thu một phần: sửa bảng kê bị chặn kèm thông báo rõ ràng
-- [ ] Xoá bảng kê đã phát hành hỏi người dùng, không âm thầm xoá hóa đơn
-- [ ] Điều hướng được hai chiều bảng kê ↔ hóa đơn
-- [ ] Hóa đơn nhập tay cũ không bị ảnh hưởng bởi `sourceType` / `sourceId`
+- [x] Phát hành bảng kê COVATEC tháng 6 sinh hóa đơn phải thu `147.419.655đ`
+- [x] Bấm Phát hành hai lần chỉ có đúng một hóa đơn
+- [x] Dashboard, tuổi nợ, ma trận 12 tháng tính đúng hóa đơn này mà không sửa code
+- [x] `recalculatePartnerBalances` cập nhật đúng dư nợ của khách
+- [x] Hóa đơn đã thu một phần: sửa bảng kê bị chặn kèm thông báo rõ ràng
+- [x] Xoá bảng kê đã phát hành hỏi người dùng, không âm thầm xoá hóa đơn
+- [x] Điều hướng được hai chiều bảng kê ↔ hóa đơn
+- [x] Hóa đơn nhập tay cũ không bị ảnh hưởng bởi `sourceType` / `sourceId`
 
 ## Risk Assessment
 

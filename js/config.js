@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
   EXCHANGE_RATES: "qlcn_exchange_rates_v1",
   CATALOGS: "qlcn_catalogs_v1",
   RATE_CARDS: "qlcn_rate_cards_v1",
+  MANIFESTS: "qlcn_manifests_v1",
   AUDIT_LOGS: "qlcn_audit_logs_v1",
   THEME: "qlcn_theme_mode",
   CURRENT_USER: "qlcn_current_user_v1"
@@ -215,6 +216,7 @@ export const PERSISTED_BRANCHES = [
   { key: "paymentRequests", storageKey: STORAGE_KEYS.PAYMENT_REQUESTS, fallback: () => [] },
   { key: "exchangeRates", storageKey: STORAGE_KEYS.EXCHANGE_RATES, fallback: () => [] },
   { key: "rateCards", storageKey: STORAGE_KEYS.RATE_CARDS, fallback: () => [] },
+  { key: "manifests", storageKey: STORAGE_KEYS.MANIFESTS, fallback: () => [] },
   // Hai nhánh dưới là object, không phải mảng -> đánh dấu isObject
   { key: "catalogs", storageKey: STORAGE_KEYS.CATALOGS, fallback: () => emptyCatalogs(), isObject: true },
   { key: "settings", storageKey: STORAGE_KEYS.SETTINGS, fallback: () => ({ ...DEFAULT_SETTINGS }), isObject: true }
@@ -301,6 +303,69 @@ export const DEFAULT_DELIVERY_CHARGE = 5000;
 /** Template diễn giải mặc định, thay cho công thức CONCATENATE trong file gốc. */
 export const DEFAULT_DESCRIPTION_TEMPLATE =
   "Cước vận chuyển {route} theo bill số {blNo}, BKS: {truckPlate}, Mã CB: {flightCode}";
+
+/**
+ * Nguồn phát sinh của một hóa đơn.
+ * Thiếu field này = hóa đơn nhập tay (dữ liệu cũ), không cần migration.
+ */
+export const INVOICE_SOURCE_TYPES = {
+  MANUAL: "MANUAL",
+  MANIFEST: "MANIFEST"
+};
+
+/** Trạng thái bảng kê */
+export const MANIFEST_STATUS = {
+  DRAFT: "DRAFT",     // đang lập, sửa tự do
+  ISSUED: "ISSUED"    // đã phát hành, đã chốt tổng và sinh công nợ
+};
+
+export const MANIFEST_STATUS_LABELS = {
+  DRAFT: "Nháp",
+  ISSUED: "Đã phát hành"
+};
+
+/**
+ * Định nghĩa cột của bảng nhập bảng kê, theo đúng thứ tự cột file mẫu để kế toán
+ * đối chiếu được bằng mắt.
+ *
+ * `kind` quyết định loại ô nhập — đây là chỗ dễ gây sai tiền nhất:
+ *   integer  -> input number step 1
+ *   decimal  -> input number step 0.01  (TUYỆT ĐỐI không dùng .currency-input:
+ *               helper tiền tệ xoá mọi ký tự không phải số nên 10.5 thành 105)
+ *   currency -> .currency-input, chỉ dành cho số tiền nguyên
+ *   computed -> tính từ engine, cho phép override
+ *   text / select / date / checkbox -> như tên gọi
+ *
+ * `extra: true` = cột file mẫu để trống toàn bộ, gom vào nhóm ẩn được cho gọn bảng.
+ */
+export const MANIFEST_COLUMNS = [
+  { key: "no", label: "NO", kind: "readonly", width: 44, sticky: true },
+  { key: "date", label: "DATE", kind: "date", width: 130, sticky: true },
+  { key: "blNo", label: "B/L NO", kind: "text", width: 120, sticky: true },
+  { key: "description", label: "Diễn giải", kind: "description", width: 240 },
+  { key: "flightCode", label: "Mã CB", kind: "select", source: "flights", width: 96 },
+  { key: "itemsText", label: "ITEMS", kind: "text", width: 150 },
+  { key: "shipperId", label: "SHIPPER", kind: "select", source: "shippers", width: 190 },
+  { key: "customsCleared", label: "TQ", kind: "checkbox", width: 52,
+    hint: "Bật = thông quan (TQ), cộng phí giám sát tờ khai. Tắt = KTQ." },
+  { key: "consigneeId", label: "CONSIGNEE", kind: "select", source: "consignees", width: 200 },
+  { key: "mode", label: "MODE", kind: "readonly", width: 60 },
+  { key: "pol", label: "POL", kind: "select", source: "ports", width: 80 },
+  { key: "pod", label: "POD", kind: "select", source: "ports", width: 80 },
+  { key: "ct", label: "C/T", kind: "integer", width: 64 },
+  { key: "gwt", label: "G.W/T", kind: "decimal", width: 80 },
+  { key: "cwt", label: "C.WT", kind: "decimal", width: 80 },
+  { key: "freightCharge", label: "FREIGHT (KRW)", kind: "computed", width: 118 },
+  { key: "deliveryCharge", label: "DELIVERY (KRW)", kind: "currency", width: 118 },
+  { key: "fuel", label: "FUEL", kind: "currency", width: 100, extra: true },
+  { key: "customsCharge", label: "CUSTOMS", kind: "currency", width: 100, extra: true },
+  { key: "pickFee", label: "PHÍ PICK (VND)", kind: "currency", width: 110, extra: true },
+  { key: "declarationSupervisionFee", label: "PHÍ GIÁM SÁT (VND)", kind: "computed", width: 130 },
+  { key: "totalKrw", label: "TOTAL (KRW)", kind: "computed", width: 118 },
+  { key: "exchangeRate", label: "Tỷ giá", kind: "computed", width: 84 },
+  { key: "totalVnd", label: "TOTAL (VND)", kind: "computed", width: 130 },
+  { key: "remark", label: "REMARK", kind: "text", width: 120 }
+];
 
 /**
  * Định nghĩa 5 danh mục dùng chung. Một component CRUD duy nhất dựng bảng và form

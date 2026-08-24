@@ -1,6 +1,6 @@
 # Bảng Kê Chi Tiết Cước Quốc Tế
 
-**Status:** Not started
+**Status:** Complete
 **Created:** 2026-08-22
 **Branch:** `tinh-nang/bang-ke-cuoc-quoc-te`
 **Mode:** planned inline (no research subagents — business logic was derived from
@@ -51,9 +51,9 @@ xuất Excel gửi khách và ghi nhận công nợ phải thu.
 | 01 | [Tỷ giá theo ngày](phase-01-ty-gia-theo-ngay.md) | — | Complete |
 | 02 | [Danh mục dùng chung & bảng giá](phase-02-danh-muc-va-bang-gia.md) | 01 | Complete |
 | 03 | [Engine tính toán](phase-03-engine-tinh-toan.md) | 01, 02 | Complete |
-| 04 | [Giao diện bảng kê](phase-04-giao-dien-bang-ke.md) | 03 | Not started |
-| 05 | [Xuất Excel gửi khách](phase-05-xuat-excel.md) | 04 | Not started |
-| 06 | [Ghi nhận công nợ phải thu](phase-06-cong-no-phai-thu.md) | 04 | Not started |
+| 04 | [Giao diện bảng kê](phase-04-giao-dien-bang-ke.md) | 03 | Complete |
+| 05 | [Xuất Excel gửi khách](phase-05-xuat-excel.md) | 04 | Complete |
+| 06 | [Ghi nhận công nợ phải thu](phase-06-cong-no-phai-thu.md) | 04 | Complete |
 
 Phase 05 và 06 độc lập với nhau — làm song song được sau khi 04 xong.
 

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Xuất Excel gửi khách"
-status: pending
+status: completed
 priority: P2
 effort: "1d"
 dependencies: [4]
@@ -26,32 +26,44 @@ khối chữ ký. Gửi được ngay không cần sửa tay.
 
 **Non-functional**
 - Không thêm bước build; thư viện nạp qua CDN như `xlsx` hiện tại.
-- In được A4 ngang không phải chỉnh lại (page setup nếu thư viện hỗ trợ).
+- Đặt lề hẹp để 26 cột dễ vừa trang. **Không đặt được hướng giấy ngang**: đã kiểm
+  bundle `xlsx-js-style` không có chữ `pageSetup` hay `landscape` nào, chỉ hỗ trợ
+  `!margins`. Người dùng chọn "Landscape" trong hộp thoại In của Excel.
 
 ## Architecture
 
-### Bước 0 — spike bắt buộc trước khi code
+### Bước 0 — spike: ĐÃ CHẠY, kết luận cần `xlsx-js-style`
 
-**[Unverified]** `index.html:19` đang nạp `xlsx@0.18.5` (SheetJS community). Theo
-hiểu biết hiện tại, bản community **ghi được** `!merges`, `!cols`, `!rows` và
-định dạng số (`z`), nhưng **không ghi được** style ô (font, viền, tô nền). Toàn bộ
-export hiện có trong `export-service.js` chỉ dùng `json_to_sheet` + `!cols` — chưa
-có chỗ nào set viền hay in đậm, nên codebase không trả lời được câu này.
+Giả thuyết `[Unverified]` ban đầu (bản community không ghi được style ô) **đã được
+xác minh là đúng**. Báo cáo đầy đủ:
+[`reports/spike-260824-0958-xlsx-style.md`](reports/spike-260824-0958-xlsx-style.md).
 
-Chưa xác minh trong phiên làm việc này. **Việc đầu tiên của phase là spike ~30
-phút**: tạo một sheet nhỏ, set `cell.s = { font: { bold: true }, border: {...} }`,
-ghi file, mở lại và xem style có còn không.
+Cách kiểm: ghi file rồi giải nén, đọc trực tiếp `xl/styles.xml` — không đọc lại
+bằng chính thư viện đó, vì nó có thể bỏ qua style khi đọc.
 
-Kết quả spike quyết định nhánh triển khai:
+| Khả năng | `xlsx@0.18.5` | `xlsx-js-style@1.2.0` |
+|---|---|---|
+| Kẻ khung, in đậm, tô nền, `wrapText` | **không** | **có** |
+| Ô trỏ style (`s=`) | **không ô nào** | có |
+| Merge, độ rộng cột, định dạng số | có | có |
 
-| Kết quả | Hướng đi |
-|---|---|
-| Style ghi được | dùng luôn `xlsx` hiện có, không thêm phụ thuộc |
-| Style bị bỏ | thêm CDN `xlsx-js-style` (fork của 0.18.5, **cùng API**) chỉ cho export này |
+Bản community **bỏ style một cách im lặng**: không lỗi, file mở được, chỉ là trần
+trụi. Không dùng được để gửi khách.
 
-Phương án dự phòng nếu cả hai không đạt: `ExcelJS` (style + page setup đầy đủ,
-API khác hẳn, ~1 MB). Chỉ chuyển khi `xlsx-js-style` cũng không đủ — đổi thư
-viện là quyết định có ảnh hưởng, cần hỏi người dùng trước.
+Quyết định: dùng `xlsx-js-style@1.2.0` cho đường ghi. Là fork của đúng `0.18.5`
+(`XLSX.version === "0.18.5"`) nên API y hệt. Không cần `ExcelJS`.
+
+**Tránh tranh chấp `window.XLSX`:** bundle của fork ghi đè biến toàn cục mà mọi
+đường ĐỌC đang dùng. Nạp theo yêu cầu rồi đổi tên ngay, một lần:
+
+```javascript
+const original = window.XLSX;
+await loadScriptOnce(FORK_CDN);   // thẻ script ghi đè window.XLSX
+window.XLSXStyle = window.XLSX;   // giữ fork dưới tên riêng
+window.XLSX = original;           // trả bản community về chỗ cũ
+```
+
+Nạp theo yêu cầu cũng tránh cộng ~425 KB vào lần tải trang đầu.
 
 **Không** chọn hướng nhồi dữ liệu vào file template `.xlsx` sẵn: SheetJS không giữ
 được style khi đọc-rồi-ghi, nên hướng đó cần thư viện khác nữa mà không lợi hơn.
@@ -109,9 +121,9 @@ số cột để kế toán đối chiếu bằng mắt) nhưng để trống nh
 
 ## Implementation Steps
 
-1. **Spike** khả năng ghi style của `xlsx@0.18.5`; ghi kết luận vào
-   `plans/reports/spike-260822-xlsx-style.md`.
-2. Chốt thư viện theo bảng trên; nếu phải chuyển sang `ExcelJS` thì hỏi người dùng.
+1. **Spike** khả năng ghi style của `xlsx@0.18.5` → đã chạy, kết luận trong
+   `reports/spike-260824-0958-xlsx-style.md`.
+2. Chốt thư viện theo bảng trên → chọn `xlsx-js-style@1.2.0`.
 3. Viết `manifest-export.js`:
    - `buildSheetMatrix(manifest, settings, catalogs)` → mảng 2 chiều (thuần, test được)
    - `applyLayout(worksheet)` → merges, `!cols`, `!rows`, style viền/đậm/wrap
@@ -122,16 +134,17 @@ số cột để kế toán đối chiếu bằng mắt) nhưng để trống nh
 
 ## Success Criteria
 
-- [ ] Spike có kết luận rõ ràng và được ghi lại thành báo cáo
-- [ ] File xuất có kẻ khung, header in đậm wrap text, các khối merge đúng
-- [ ] Thông tin công ty lấy từ Cài đặt, không hardcode
-- [ ] Shipper xuất ra có đúng một hậu tố `TQ` / `KTQ`
-- [ ] `Tổng Giá trị thanh toán` = tổng cột `TOTAL AMOUNT (VND)`
-- [ ] `Bằng chữ` khớp số tiền **và** đúng quy ước đã chốt ở open question #4
+- [x] Spike có kết luận rõ ràng và được ghi lại thành báo cáo
+- [x] File xuất có kẻ khung, header in đậm wrap text, các khối merge đúng
+- [x] Thông tin công ty lấy từ Cài đặt, không hardcode
+- [x] Shipper xuất ra có đúng một hậu tố `TQ` / `KTQ`
+- [x] `Tổng Giá trị thanh toán` = tổng cột `TOTAL AMOUNT (VND)`
+- [x] `Bằng chữ` khớp số tiền **và** đúng quy ước đã chốt ở open question #4
       (red team #5)
-- [ ] Các tổng nằm đúng cột header của chúng, khớp bố cục file gốc
-- [ ] Mở bằng Excel không có cảnh báo file lỗi
-- [ ] In A4 ngang không bị cắt cột
+- [x] Các tổng nằm đúng cột header của chúng, khớp bố cục file gốc
+- [x] Mở bằng Excel không có cảnh báo file lỗi
+- [x] File có lề hẹp (`!margins`); hướng giấy ngang chọn khi In — thư viện không
+      ghi được thiết lập trang, đã kiểm chứng
 
 ## Risk Assessment
 
@@ -148,6 +161,10 @@ cùng tồn tại là có chủ ý, cần ghi rõ lý do trong `manifest-export.
 *Response:* bố cục cột sao đúng file gốc nên khác biệt duy nhất là phần định dạng;
 đối chiếu trực tiếp với file mẫu trước khi gửi khách lần đầu.
 
-**Tăng ~900 KB CDN** *Signal:* trang tải chậm rõ rệt trên mạng yếu.
-*Response:* nạp thư viện style theo yêu cầu (dynamic `import()` / chèn thẻ script
-khi bấm Xuất) thay vì nạp sẵn ở `index.html`.
+**Tăng ~425 KB CDN** *Signal:* trang tải chậm rõ rệt trên mạng yếu.
+*Response:* đã nạp theo yêu cầu (chèn thẻ script khi bấm Xuất) thay vì nạp sẵn ở
+`index.html`, nên lần tải trang đầu không đổi.
+
+**Lần xuất đầu cần mạng** — fork nạp từ CDN. *Signal:* bấm Xuất khi offline thì
+báo lỗi. *Response:* thông báo nói rõ "cần kết nối mạng lần đầu"; sau đó trình
+duyệt cache lại. Nếu cần chạy hoàn toàn offline thì tải file về đặt cạnh `index.html`.

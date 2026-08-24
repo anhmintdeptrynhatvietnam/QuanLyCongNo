@@ -15,7 +15,7 @@ Dữ liệu được lưu trữ tự động trên **LocalStorage** (chế độ
 │                      PRESENTATION LAYER (UI)                     │
 │  - components/ : dashboard.js, partners.js, invoices.js,        │
 │                  payments.js, reports.js, settings.js, modal.js, │
-│                  exchange-rates.js                               │
+│                  exchange-rates.js, catalogs.js, manifests.js    │
 │  - css/        : variables.css, base.css, layout.css,            │
 │                  components.css, views.css                       │
 └─────────────────────────────────┬────────────────────────────────┘
@@ -130,11 +130,85 @@ ngày, cột D = KRW→VND, cột E = USD→VND (`EXCHANGE_RATE_IMPORT` trong `c
    khoảng 1.400 lần mà số liệu vẫn trông bình thường. Quá 20% dòng bị loại thì
    dừng cả lần nhập thay vì nhập một phần.
 
-### 3.5. Registry Lưu Trữ (`PERSISTED_BRANCHES`)
+### 3.5. Bảng Kê Chi Tiết Cước Quốc Tế (`ManifestSheet`)
+
+Báo giá vận tải quốc tế: mỗi dòng là một đơn hàng, hệ thống tính cước theo bảng
+giá riêng của khách và quy đổi VND theo tỷ giá **ngày chuyển hàng**.
+
+```typescript
+interface ManifestSheet {
+  id: string;
+  sheetNo: string;              // duy nhất; cũng dùng làm số hóa đơn
+  issueDate: string;            // YYYY-MM-DD
+  partnerId: string; partnerName: string;
+  rateCardId: string | null;
+  truckPlate: string;           // dùng trong câu diễn giải
+  route: string;
+  descriptionTemplate: string;  // thay công thức CONCATENATE của file Excel
+  vatRate: number;
+  lines: ManifestLine[];
+  totals: ManifestTotals | null;   // snapshot khi phát hành
+  status: "DRAFT" | "ISSUED";
+  linkedInvoiceId: string | null;
+  updatedAt: string; updatedBy: string;   // optimistic concurrency
+}
+
+interface ManifestLine {
+  date: string; blNo: string; flightCode: string; itemsText: string;
+  shipperId: string; consigneeId: string;
+  customsCleared: boolean;      // cờ TQ/KTQ — thuộc DÒNG, không thuộc shipper
+  mode: "AIR"; pol: string; pod: string;
+  ct: number; gwt: number; cwt: number;         // cwt là số thập phân
+  freightCharge: number; fuel: number;
+  customsCharge: number; deliveryCharge: number;  // KRW, vào TOTAL KRW
+  pickFee: number; declarationSupervisionFee: number;  // VND, không quy đổi
+  krwCollectedForKorea: number; overCharge: number; otherCharge: number; // NGOÀI tổng
+  totalKrw: number; exchangeRate: number | null; totalVnd: number | null;
+  overrides: Record<string, number>;   // ô bị sửa tay đè lên công thức
+  remark: string;
+}
+```
+
+**Bốn quy tắc không được nới:**
+
+1. **Cờ thông quan nằm trên dòng, không trên shipper.** Dữ liệu thật cho thấy cùng
+   một công ty có lô thông quan và lô không thông quan. `formatShipperName(shipper,
+   customsCleared)` là hàm **duy nhất** được sinh hậu tố `TQ`/`KTQ`.
+2. **Tỷ giá snapshot vào từng dòng.** Bảng kê đã gửi khách không được đổi số khi
+   file tỷ giá về sau bị sửa. Dòng đã có `exchangeRate` thì không tra lại.
+3. **Không đoán tỷ giá.** Dòng thiếu tỷ giá có `totalVnd = null`, không vào tổng,
+   và chặn phát hành.
+4. **`TOTAL KRW = freight + fuel + customs + delivery`** — khớp công thức
+   `SUM(O:R)` của file gốc, **không** gồm ba cột `Phí Hàn thu hộ` / `OVER` /
+   `OTHER`. Vì thế ba cột đó không có ô nhập trên giao diện: một ô nhập tiền mà
+   tiền lại không vào tổng là cái bẫy.
+
+**Số học tiền tệ** (`manifest-engine.js` → `toVnd`): nguyên hoá tỷ giá rồi nhân,
+chia sau. Nhân float trực tiếp làm lệch 1đ ở các dòng rơi đúng `.5` — có 5 dòng
+như vậy trong dữ liệu thật, và tỷ giá lưu trong Excel là float không chính xác
+(`18.190000000000001`).
+
+**Giao diện** (`manifests.js`): bản nháp sống trong view, **không** trong
+`stateStore`. `app.js` subscribe stateStore → mỗi `notify()` gọi `mount()` → gán
+lại `innerHTML` → mất focus. Với bảng 26 cột thì đẩy từng ký tự vào state là không
+dùng được. Gõ → sửa draft + ghi trực tiếp vào các ô tính toán; bấm Lưu → đẩy một
+lần. View cũng bỏ qua `mount()` khi con trỏ đang ở trong một ô.
+
+**Xuất Excel** (`manifest-export.js`): `xlsx@0.18.5` **bỏ style ô một cách im
+lặng**, nên dùng `xlsx-js-style` (fork cùng version, cùng API) nạp theo yêu cầu
+cho đường ghi; `window.XLSX` được trả lại bản community ngay sau khi nạp để mọi
+đường đọc không đổi.
+
+**Phát hành** (`state.js` → `issueManifest`): sinh `Invoice` type `RECEIVABLE` với
+`sourceType: "MANIFEST"`. Idempotent qua `linkedInvoiceId` — bấm hai lần không tạo
+nợ khống. Hóa đơn đã thu tiền mà số tiền đổi thì **chặn**, không tự sửa sổ.
+
+### 3.6. Registry Lưu Trữ (`PERSISTED_BRANCHES`)
 
 `config.js` khai báo một danh sách duy nhất các nhánh state được lưu lâu dài.
-`StorageService.loadAll` / `saveAll` / `exportBackupJSON` và
-`FirebaseService.saveUserData` đều **duyệt danh sách này**.
+`StorageService.loadAll` / `saveAll` / `exportBackupJSON`,
+`FirebaseService.saveUserData` và `StateStore.applyBranches` đều **duyệt danh sách
+này**.
 
 ```typescript
 interface PersistedBranch {
@@ -145,10 +219,16 @@ interface PersistedBranch {
 }
 ```
 
-**Thêm một nhánh dữ liệu mới chỉ cần thêm một dòng vào registry.** Trước đây bốn
-hàm trên liệt kê tên nhánh bằng destructuring riêng lẻ, nên một nhánh mới sẽ bị bỏ
-khỏi bản sao lưu JSON và khỏi payload đồng bộ Cloud **mà không báo lỗi** — người
-dùng chỉ phát hiện khi khôi phục backup và thấy mất dữ liệu.
+**Thêm một nhánh dữ liệu mới chỉ cần thêm một dòng vào registry.** Trước đây các
+hàm trên liệt kê tên nhánh bằng tay, nên một nhánh mới sẽ bị bỏ khỏi bản sao lưu
+JSON và khỏi payload đồng bộ Cloud **mà không báo lỗi** — người dùng chỉ phát hiện
+khi khôi phục backup và thấy mất dữ liệu.
+
+`StateStore.applyBranches(source)` nạp state từ một nguồn (LocalStorage / Cloud /
+dữ liệu Khách). Trước đây `state.js` gán từng nhánh bằng tay ở **7 chỗ** (`init`,
+cache local, chuyển dữ liệu Khách, nhánh rỗng, tải Cloud, Realtime sync, **đăng
+xuất**), và chỗ đăng xuất từng bị bỏ sót một nhánh — hậu quả là dữ liệu của tài
+khoản vừa dùng bị ghi sang khóa lưu trữ của chế độ Khách.
 
 ---
 

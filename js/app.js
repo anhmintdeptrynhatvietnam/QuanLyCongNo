@@ -13,6 +13,7 @@ import { PaymentsView } from './components/payments.js';
 import { ReportsView } from './components/reports.js';
 import { ExchangeRatesView } from './components/exchange-rates.js';
 import { CatalogsView } from './components/catalogs.js';
+import { ManifestsView } from './components/manifests.js';
 import { SettingsView } from './components/settings.js';
 import { Modal } from './components/modal.js';
 import { qs } from './utils/dom.js';
@@ -29,6 +30,7 @@ class App {
       reports: new ReportsView("main-content"),
       "exchange-rates": new ExchangeRatesView("main-content"),
       catalogs: new CatalogsView("main-content"),
+      manifests: new ManifestsView("main-content"),
       settings: new SettingsView("main-content")
     };
   }

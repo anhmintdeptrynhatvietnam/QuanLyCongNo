@@ -291,6 +291,21 @@ export function parseExcelDate(val) {
 }
 
 /**
+ * Định dạng mốc thời gian ISO sang DD/MM/YYYY HH:mm
+ * Dùng cho dấu vết sửa đổi (ai sửa, lúc nào).
+ * @param {string|Date} value
+ * @returns {string}
+ */
+export function formatDateTime(value) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${formatDate(d)} ${hh}:${mm}`;
+}
+
+/**
  * Định dạng phần trăm
  * @param {number} value
  * @returns {string} Ví dụ: 45.5%

@@ -6,7 +6,8 @@
 
 import { StorageService } from './services/storage.js';
 import { recalculatePartnerBalances, calculateInvoiceStatus, autoAllocatePaymentFIFO } from './services/debt-engine.js';
-import { DEFAULT_SETTINGS, PAYMENT_REQUEST_STATUS, getVoucherType, VOUCHER_TYPE_PREFIXES, INVOICE_TYPES, PAYMENT_TYPES, PERSISTED_BRANCHES, emptyCatalogs } from './config.js';
+import { DEFAULT_SETTINGS, PAYMENT_REQUEST_STATUS, getVoucherType, VOUCHER_TYPE_PREFIXES, INVOICE_TYPES, PAYMENT_TYPES, PERSISTED_BRANCHES, emptyCatalogs, MANIFEST_STATUS, DEFAULT_DESCRIPTION_TEMPLATE, INVOICE_SOURCE_TYPES } from './config.js';
+import { toInputDateFormat, formatDateTime } from './utils/formatters.js';
 import { FirebaseService } from './services/firebase.js';
 import { ExchangeRateService } from './services/exchange-rate-service.js';
 import { normalizeCatalogs, findCatalogUsage, findDuplicateEntry, SEED_CATALOGS } from './services/catalog-service.js';
@@ -22,6 +23,7 @@ class StateStore {
       exchangeRates: [], // Tỷ giá theo ngày, phục vụ bảng kê cước quốc tế
       catalogs: emptyCatalogs(), // Danh mục dùng chung: shippers, consignees, flights, ports, items
       rateCards: [], // Bảng giá cước riêng theo từng khách hàng + tuyến
+      manifests: [], // Bảng kê chi tiết cước quốc tế
       settings: { ...DEFAULT_SETTINGS },
       activeView: "dashboard",
       searchQuery: "",
@@ -990,6 +992,239 @@ class StateStore {
     this.recomputeAndPersist();
     return { ok: true };
   }
+
+  // ==========================================
+  // BẢNG KÊ CHI TIẾT CƯỚC QUỐC TẾ
+  // ==========================================
+
+  /** Người đang sửa, dùng cho dấu vết chống ghi đè */
+  currentEditorLabel() {
+    return this.state.currentUser?.email || "Chế độ Khách (offline)";
+  }
+
+  /**
+   * Tạo bảng kê mới.
+   * @param {Object} data
+   * @returns {{ok: boolean, error?: string, manifest?: Object}}
+   */
+  addManifest(data) {
+    if (!data.partnerId) return { ok: false, error: "Chưa chọn khách hàng." };
+
+    const sheetNo = String(data.sheetNo || '').trim();
+    if (!sheetNo) return { ok: false, error: "Chưa nhập số bảng kê." };
+
+    const clash = this.state.manifests.find(m => m.sheetNo === sheetNo);
+    if (clash) return { ok: false, error: `Số bảng kê "${sheetNo}" đã tồn tại.` };
+
+    const partner = this.state.partners.find(p => p.id === data.partnerId);
+    const manifest = {
+      id: `MF-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      sheetNo,
+      issueDate: data.issueDate || toInputDateFormat(new Date()),
+      partnerId: data.partnerId,
+      partnerName: partner ? partner.name : '',
+      rateCardId: data.rateCardId || null,
+      truckPlate: data.truckPlate || '',
+      route: data.route || '',
+      descriptionTemplate: data.descriptionTemplate || DEFAULT_DESCRIPTION_TEMPLATE,
+      vatRate: Number(data.vatRate) || 0,
+      lines: data.lines || [],
+      totals: null,
+      status: MANIFEST_STATUS.DRAFT,
+      linkedInvoiceId: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: this.currentEditorLabel()
+    };
+
+    this.state.manifests = [...this.state.manifests, manifest];
+    this.recomputeAndPersist();
+    return { ok: true, manifest };
+  }
+
+  /**
+   * Cập nhật một bảng kê.
+   *
+   * Thay đúng một phần tử theo `id` (không thay cả mảng) và kiểm tra `updatedAt`
+   * trước khi ghi. Nếu bỏ hai điều này thì hai kế toán lưu cùng lúc sẽ làm mất
+   * bảng kê của nhau: người lưu sau ghi từ bản `state.manifests` chưa có sửa đổi
+   * của người lưu trước.
+   *
+   * @param {string} id
+   * @param {Object} changes
+   * @param {string|null} baseUpdatedAt Giá trị `updatedAt` lúc mở bảng kê ra sửa
+   * @returns {{ok: boolean, error?: string, manifest?: Object}}
+   */
+  updateManifest(id, changes, baseUpdatedAt = null) {
+    const current = this.state.manifests.find(m => m.id === id);
+    if (!current) return { ok: false, error: "Không tìm thấy bảng kê." };
+
+    if (baseUpdatedAt && current.updatedAt && current.updatedAt !== baseUpdatedAt) {
+      return {
+        ok: false,
+        conflict: true,
+        error: `Bảng kê này đã được ${current.updatedBy || 'nơi khác'} sửa lúc ` +
+               `${formatDateTime(current.updatedAt)}. Tải lại để xem thay đổi trước khi lưu.`
+      };
+    }
+
+    if (changes.sheetNo) {
+      const sheetNo = String(changes.sheetNo).trim();
+      const clash = this.state.manifests.find(m => m.id !== id && m.sheetNo === sheetNo);
+      if (clash) return { ok: false, error: `Số bảng kê "${sheetNo}" đã tồn tại.` };
+    }
+
+    const updated = {
+      ...current,
+      ...changes,
+      id: current.id,
+      updatedAt: new Date().toISOString(),
+      updatedBy: this.currentEditorLabel()
+    };
+
+    this.state.manifests = this.state.manifests.map(m => (m.id === id ? updated : m));
+    this.recomputeAndPersist();
+    return { ok: true, manifest: updated };
+  }
+
+  /**
+   * Xóa bảng kê. Bảng kê đã phát hành phải xử lý hóa đơn liên kết trước.
+   * @param {string} id
+   * @returns {{ok: boolean, error?: string}}
+   */
+  deleteManifest(id) {
+    const manifest = this.state.manifests.find(m => m.id === id);
+    if (!manifest) return { ok: false, error: "Không tìm thấy bảng kê." };
+
+    if (manifest.linkedInvoiceId) {
+      const invoice = this.state.invoices.find(i => i.id === manifest.linkedInvoiceId);
+      if (invoice) {
+        return {
+          ok: false,
+          hasInvoice: true,
+          error: `Bảng kê đã phát hành và đang gắn hóa đơn ${invoice.invoiceNumber}. ` +
+                 `Xử lý hóa đơn đó trước khi xóa bảng kê.`
+        };
+      }
+    }
+
+    this.state.manifests = this.state.manifests.filter(m => m.id !== id);
+    this.recomputeAndPersist();
+    return { ok: true };
+  }
+
+  /**
+   * Bỏ liên kết hóa đơn khỏi bảng kê (giữ hóa đơn lại).
+   * @param {string} manifestId
+   */
+  unlinkManifestInvoice(manifestId) {
+    this.state.manifests = this.state.manifests.map(m =>
+      (m.id === manifestId ? { ...m, linkedInvoiceId: null } : m));
+    this.recomputeAndPersist();
+    return { ok: true };
+  }
+
+  /**
+   * Phát hành bảng kê: chốt tổng và sinh hóa đơn phải thu.
+   *
+   * Bắt buộc idempotent. Bấm hai lần là chuyện thường, và hậu quả của việc sinh
+   * hóa đơn trùng là nợ khống hơn trăm triệu.
+   *
+   * @param {string} manifestId
+   * @param {{totals: Object, lines: Array}} computed Kết quả từ computeSheet
+   * @returns {{ok: boolean, error?: string, invoice?: Object, reissued?: boolean}}
+   */
+  issueManifest(manifestId, computed) {
+    const manifest = this.state.manifests.find(m => m.id === manifestId);
+    if (!manifest) return { ok: false, error: "Không tìm thấy bảng kê." };
+    if (!manifest.partnerId) return { ok: false, error: "Bảng kê chưa có khách hàng." };
+
+    const lines = computed?.lines || [];
+    if (lines.length === 0) return { ok: false, error: "Bảng kê chưa có dòng nào." };
+
+    const missing = lines.filter(l => l.totalVnd === null || l.totalVnd === undefined);
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        error: `Còn ${missing.length} dòng chưa có tỷ giá. Nhập tỷ giá cho các ngày đó ` +
+               `trước khi phát hành — không được đoán tỷ giá.`
+      };
+    }
+
+    const totals = computed.totals;
+    const partner = this.state.partners.find(p => p.id === manifest.partnerId);
+    const termDays = partner?.creditTermDays ?? this.state.settings.defaultCreditTermDays ?? 30;
+    const issueDate = manifest.issueDate || toInputDateFormat(new Date());
+    const dueDate = toInputDateFormat(new Date(new Date(issueDate).getTime() + termDays * 86400000));
+
+    const existing = manifest.linkedInvoiceId
+      ? this.state.invoices.find(i => i.id === manifest.linkedInvoiceId)
+      : null;
+
+    // Đã có hóa đơn và đã thu tiền -> KHÔNG tự sửa. Điều chỉnh một hóa đơn đã cấn
+    // trừ là làm sai sổ; phải để người dùng quyết định.
+    if (existing && (existing.paidAmount || 0) > 0 && existing.totalAmount !== totals.grandTotal) {
+      return {
+        ok: false,
+        error: `Hóa đơn ${existing.invoiceNumber} đã thu ${formatCurrencyPlain(existing.paidAmount)}đ ` +
+               `nên không thể tự đổi số tiền từ ${formatCurrencyPlain(existing.totalAmount)}đ ` +
+               `sang ${formatCurrencyPlain(totals.grandTotal)}đ. Xử lý phiếu thu trước.`
+      };
+    }
+
+    const payload = {
+      invoiceNumber: manifest.sheetNo,
+      itemName: `Cước quốc tế — ${lines.length} đơn hàng`,
+      partnerId: manifest.partnerId,
+      partnerName: manifest.partnerName || partner?.name || '',
+      type: INVOICE_TYPES.RECEIVABLE,
+      issueDate,
+      dueDate,
+      totalAmount: totals.grandTotal,
+      sourceType: INVOICE_SOURCE_TYPES.MANIFEST,
+      sourceId: manifest.id,
+      notes: `Bảng kê chi tiết cước quốc tế ${manifest.sheetNo} — ${lines.length} đơn hàng`
+    };
+
+    let invoice;
+    let reissued = false;
+
+    if (existing) {
+      // Phát hành lại: cập nhật hóa đơn cũ, KHÔNG tạo bản trùng
+      reissued = true;
+      this.state.invoices = this.state.invoices.map(i =>
+        (i.id === existing.id ? { ...i, ...payload, paidAmount: i.paidAmount || 0 } : i));
+      invoice = this.state.invoices.find(i => i.id === existing.id);
+    } else {
+      const dupNumber = this.state.invoices.find(i => i.invoiceNumber === manifest.sheetNo);
+      if (dupNumber) {
+        return {
+          ok: false,
+          error: `Đã có hóa đơn số "${manifest.sheetNo}" trong hệ thống. Đổi số bảng kê ` +
+                 `hoặc kiểm tra lại hóa đơn đó.`
+        };
+      }
+      invoice = this.addInvoice(payload);
+    }
+
+    // Chốt tổng và trạng thái vào bảng kê, ghi một lần cùng hóa đơn
+    this.state.manifests = this.state.manifests.map(m => (m.id === manifestId ? {
+      ...m,
+      lines: computed.lines,
+      totals,
+      status: MANIFEST_STATUS.ISSUED,
+      linkedInvoiceId: invoice.id,
+      updatedAt: new Date().toISOString(),
+      updatedBy: this.currentEditorLabel()
+    } : m));
+
+    this.recomputeAndPersist();
+    return { ok: true, invoice, reissued };
+  }
+}
+
+/** Định dạng số tiền gọn cho thông báo lỗi (không phụ thuộc DOM) */
+function formatCurrencyPlain(amount) {
+  return Math.round(Number(amount) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 export const stateStore = new StateStore();
