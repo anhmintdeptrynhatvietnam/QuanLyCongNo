@@ -6,9 +6,10 @@
 
 import { StorageService } from './services/storage.js';
 import { recalculatePartnerBalances, calculateInvoiceStatus, autoAllocatePaymentFIFO } from './services/debt-engine.js';
-import { DEFAULT_SETTINGS, PAYMENT_REQUEST_STATUS, getVoucherType, VOUCHER_TYPE_PREFIXES, INVOICE_TYPES, PAYMENT_TYPES } from './config.js';
+import { DEFAULT_SETTINGS, PAYMENT_REQUEST_STATUS, getVoucherType, VOUCHER_TYPE_PREFIXES, INVOICE_TYPES, PAYMENT_TYPES, PERSISTED_BRANCHES, emptyCatalogs } from './config.js';
 import { FirebaseService } from './services/firebase.js';
 import { ExchangeRateService } from './services/exchange-rate-service.js';
+import { normalizeCatalogs, findCatalogUsage, findDuplicateEntry, SEED_CATALOGS } from './services/catalog-service.js';
 
 class StateStore {
   constructor() {
@@ -19,6 +20,8 @@ class StateStore {
       payments: [],
       paymentRequests: [],
       exchangeRates: [], // Tỷ giá theo ngày, phục vụ bảng kê cước quốc tế
+      catalogs: emptyCatalogs(), // Danh mục dùng chung: shippers, consignees, flights, ports, items
+      rateCards: [], // Bảng giá cước riêng theo từng khách hàng + tuyến
       settings: { ...DEFAULT_SETTINGS },
       activeView: "dashboard",
       searchQuery: "",
@@ -31,14 +34,30 @@ class StateStore {
   /**
    * Khởi tạo State từ Storage và lắng nghe Firebase Auth
    */
+  /**
+   * Nạp các nhánh dữ liệu vào state từ một nguồn (LocalStorage / Cloud / dữ liệu Khách).
+   *
+   * Duyệt PERSISTED_BRANCHES thay vì gán tay từng nhánh: trước đây mỗi nhánh mới
+   * phải thêm vào 6 chỗ gán khác nhau (init, cache local, dữ liệu Khách, reset,
+   * tải Cloud, Realtime sync), và bỏ sót đúng một chỗ là dữ liệu biến mất ở đúng
+   * một luồng đăng nhập — loại lỗi rất khó phát hiện.
+   *
+   * @param {Object|null} source Nguồn dữ liệu; null/undefined -> dùng giá trị mặc định
+   */
+  applyBranches(source) {
+    for (const branch of PERSISTED_BRANCHES) {
+      const value = source ? source[branch.key] : undefined;
+      const isUsable = branch.isObject
+        ? value && typeof value === 'object' && !Array.isArray(value)
+        : Array.isArray(value);
+      this.state[branch.key] = isUsable ? value : branch.fallback();
+    }
+    // Danh mục phải đủ 5 nhóm dù dữ liệu cũ chỉ có một phần
+    this.state.catalogs = normalizeCatalogs(this.state.catalogs);
+  }
+
   async init() {
-    const loaded = StorageService.loadAll(null);
-    this.state.partners = loaded.partners || [];
-    this.state.invoices = loaded.invoices || [];
-    this.state.payments = loaded.payments || [];
-    this.state.paymentRequests = loaded.paymentRequests || [];
-    this.state.exchangeRates = loaded.exchangeRates || [];
-    this.state.settings = loaded.settings || { ...DEFAULT_SETTINGS };
+    this.applyBranches(StorageService.loadAll(null));
 
     this.recomputeAndPersist(false);
 
@@ -68,33 +87,18 @@ class StateStore {
                            (localData.invoices && localData.invoices.length > 0);
 
       if (hasLocalData) {
-        this.state.partners = localData.partners || [];
-        this.state.invoices = localData.invoices || [];
-        this.state.payments = localData.payments || [];
-        this.state.paymentRequests = localData.paymentRequests || [];
-        this.state.exchangeRates = localData.exchangeRates || [];
-        this.state.settings = localData.settings || { ...DEFAULT_SETTINGS };
+        this.applyBranches(localData);
       } else {
         // Nếu user này chưa có cache local, kiểm tra xem có dữ liệu Guest (Offline) vừa nhập không
         const guestData = StorageService.loadAll(null);
-        const hasGuestData = (guestData.partners && guestData.partners.length > 0) || 
+        const hasGuestData = (guestData.partners && guestData.partners.length > 0) ||
                              (guestData.invoices && guestData.invoices.length > 0);
         if (hasGuestData) {
           console.log("[StateStore] Tự động chuyển đổi dữ liệu Khách (Guest) sang tài khoản Google mới đăng nhập...");
-          this.state.partners = guestData.partners || [];
-          this.state.invoices = guestData.invoices || [];
-          this.state.payments = guestData.payments || [];
-          this.state.paymentRequests = guestData.paymentRequests || [];
-          this.state.exchangeRates = guestData.exchangeRates || [];
-          this.state.settings = guestData.settings || { ...DEFAULT_SETTINGS };
+          this.applyBranches(guestData);
           StorageService.saveAll(this.state, userId);
         } else {
-          this.state.partners = [];
-          this.state.invoices = [];
-          this.state.payments = [];
-          this.state.paymentRequests = [];
-          this.state.exchangeRates = [];
-          this.state.settings = { ...DEFAULT_SETTINGS };
+          this.applyBranches(null);
         }
       }
 
@@ -102,15 +106,11 @@ class StateStore {
       try {
         const cloudData = await FirebaseService.fetchUserData(userId);
         if (cloudData && ((cloudData.partners && cloudData.partners.length > 0) || (cloudData.invoices && cloudData.invoices.length > 0) || (cloudData.payments && cloudData.payments.length > 0))) {
-          this.state.partners = cloudData.partners || [];
-          this.state.invoices = (cloudData.invoices || []).map(inv => ({
+          this.applyBranches(cloudData);
+          this.state.invoices = this.state.invoices.map(inv => ({
             ...inv,
             status: calculateInvoiceStatus(inv)
           }));
-          this.state.payments = cloudData.payments || [];
-          this.state.paymentRequests = cloudData.paymentRequests || [];
-          this.state.exchangeRates = cloudData.exchangeRates || [];
-          this.state.settings = cloudData.settings || { ...DEFAULT_SETTINGS };
           this.state.syncStatus = "synced";
           this.state.lastSyncError = null;
           StorageService.saveAll(this.state, userId);
@@ -132,15 +132,11 @@ class StateStore {
       // 3. Lắng nghe Realtime sync từ Cloud
       FirebaseService.listenUserData(userId, (remoteData) => {
         if (remoteData) {
-          this.state.partners = remoteData.partners || [];
-          this.state.invoices = (remoteData.invoices || []).map(inv => ({
+          this.applyBranches(remoteData);
+          this.state.invoices = this.state.invoices.map(inv => ({
             ...inv,
             status: calculateInvoiceStatus(inv)
           }));
-          this.state.payments = remoteData.payments || [];
-          this.state.paymentRequests = remoteData.paymentRequests || [];
-          this.state.exchangeRates = remoteData.exchangeRates || [];
-          this.state.settings = remoteData.settings || { ...DEFAULT_SETTINGS };
           this.state.partners = recalculatePartnerBalances(this.state.partners, this.state.invoices);
           this.state.syncStatus = "synced";
           this.state.lastSyncError = null;
@@ -160,12 +156,7 @@ class StateStore {
       this.state.syncStatus = "offline";
       this.state.lastSyncError = null;
 
-      const guestData = StorageService.loadAll(null);
-      this.state.partners = guestData.partners || [];
-      this.state.invoices = guestData.invoices || [];
-      this.state.payments = guestData.payments || [];
-      this.state.paymentRequests = guestData.paymentRequests || [];
-      this.state.settings = guestData.settings || { ...DEFAULT_SETTINGS };
+      this.applyBranches(StorageService.loadAll(null));
 
       this.recomputeAndPersist(true);
     }
@@ -812,23 +803,12 @@ class StateStore {
   }
 
   loadDemoData() {
-    const demo = StorageService.generateDemoData();
-    this.state.partners = demo.partners;
-    this.state.invoices = demo.invoices;
-    this.state.payments = demo.payments;
-    this.state.paymentRequests = demo.paymentRequests || [];
-    this.state.exchangeRates = demo.exchangeRates || [];
-    this.state.settings = demo.settings;
+    this.applyBranches(StorageService.generateDemoData());
     this.recomputeAndPersist();
   }
 
   resetAllData() {
-    this.state.partners = [];
-    this.state.invoices = [];
-    this.state.payments = [];
-    this.state.paymentRequests = [];
-    this.state.exchangeRates = [];
-    this.state.settings = { ...DEFAULT_SETTINGS };
+    this.applyBranches(null);
     this.recomputeAndPersist();
   }
 
@@ -869,6 +849,146 @@ class StateStore {
   deleteExchangeRate(date) {
     this.state.exchangeRates = this.state.exchangeRates.filter(r => r.date !== date);
     this.recomputeAndPersist();
+  }
+
+  // ==========================================
+  // DANH MỤC DÙNG CHUNG
+  // ==========================================
+
+  /**
+   * Thêm mới hoặc cập nhật một bản ghi danh mục.
+   * @param {string} type shippers | consignees | flights | ports | items
+   * @param {Object} entry Không có `id` -> thêm mới
+   * @returns {{ok: boolean, error?: string, entry?: Object}}
+   */
+  upsertCatalogEntry(type, entry) {
+    const list = this.state.catalogs[type];
+    if (!list) return { ok: false, error: `Không có danh mục "${type}".` };
+
+    const duplicate = findDuplicateEntry(list, entry, type, entry.id || null);
+    if (duplicate) {
+      return { ok: false, error: `"${duplicate.name || duplicate.code}" đã có trong danh mục.` };
+    }
+
+    if (entry.id) {
+      this.state.catalogs[type] = list.map(e => (e.id === entry.id ? { ...e, ...entry } : e));
+    } else {
+      const saved = { ...entry, id: `${type.slice(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
+      this.state.catalogs[type] = [...list, saved];
+      this.recomputeAndPersist();
+      return { ok: true, entry: saved };
+    }
+
+    this.recomputeAndPersist();
+    return { ok: true, entry };
+  }
+
+  /**
+   * Xóa một bản ghi danh mục, chặn lại nếu đang được bảng kê hoặc bảng giá dùng.
+   * @param {string} type
+   * @param {string} id
+   * @returns {{ok: boolean, error?: string}}
+   */
+  deleteCatalogEntry(type, id) {
+    const list = this.state.catalogs[type] || [];
+    const entry = list.find(e => e.id === id);
+    if (!entry) return { ok: false, error: "Không tìm thấy bản ghi." };
+
+    const usage = findCatalogUsage(this.state, type, entry);
+    if (usage.count > 0) {
+      return {
+        ok: false,
+        error: `Không xóa được vì đang được dùng ở: ${usage.where.join(', ')}. ` +
+               `Sửa các dòng đó trước khi xóa.`
+      };
+    }
+
+    this.state.catalogs[type] = list.filter(e => e.id !== id);
+    this.recomputeAndPersist();
+    return { ok: true };
+  }
+
+  /**
+   * Nạp dữ liệu gợi ý cho danh mục, bỏ qua bản ghi đã có.
+   * @returns {{added: number, skipped: number}}
+   */
+  seedCatalogs() {
+    let added = 0;
+    let skipped = 0;
+
+    for (const [type, entries] of Object.entries(SEED_CATALOGS)) {
+      const list = this.state.catalogs[type] || [];
+      const next = [...list];
+
+      for (const entry of entries) {
+        if (findDuplicateEntry(next, entry, type)) {
+          skipped++;
+          continue;
+        }
+        next.push({ ...entry, id: `${type.slice(0, 3).toUpperCase()}-SEED-${added}-${Math.random().toString(36).slice(2, 7)}` });
+        added++;
+      }
+
+      this.state.catalogs[type] = next;
+    }
+
+    this.recomputeAndPersist();
+    return { added, skipped };
+  }
+
+  // ==========================================
+  // BẢNG GIÁ CƯỚC
+  // ==========================================
+
+  /**
+   * Thêm mới hoặc cập nhật bảng giá. Mỗi khách hàng chỉ có một bảng giá cho một tuyến.
+   * @param {Object} card
+   * @returns {{ok: boolean, error?: string, card?: Object}}
+   */
+  upsertRateCard(card) {
+    if (!card.partnerId) return { ok: false, error: "Chưa chọn khách hàng." };
+    if (!card.pol || !card.pod) return { ok: false, error: "Chưa chọn tuyến (POL / POD)." };
+
+    const clash = this.state.rateCards.find(rc =>
+      rc.id !== card.id &&
+      rc.partnerId === card.partnerId &&
+      rc.pol === card.pol &&
+      rc.pod === card.pod
+    );
+    if (clash) {
+      return { ok: false, error: `Khách hàng này đã có bảng giá cho tuyến ${card.pol} → ${card.pod}.` };
+    }
+
+    const partner = this.state.partners.find(p => p.id === card.partnerId);
+    const withName = { ...card, partnerName: partner ? partner.name : card.partnerName || "" };
+
+    if (card.id) {
+      this.state.rateCards = this.state.rateCards.map(rc => (rc.id === card.id ? { ...rc, ...withName } : rc));
+      this.recomputeAndPersist();
+      return { ok: true, card: withName };
+    }
+
+    const saved = { ...withName, id: `RC-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` };
+    this.state.rateCards = [...this.state.rateCards, saved];
+    this.recomputeAndPersist();
+    return { ok: true, card: saved };
+  }
+
+  /**
+   * Xóa bảng giá. Chặn lại nếu đang có bảng kê tham chiếu.
+   * @param {string} id
+   * @returns {{ok: boolean, error?: string}}
+   */
+  deleteRateCard(id) {
+    const used = (this.state.manifests || []).filter(m => m.rateCardId === id);
+    if (used.length > 0) {
+      const names = used.map(m => m.sheetNo || m.id).join(', ');
+      return { ok: false, error: `Không xóa được vì đang được dùng ở bảng kê: ${names}.` };
+    }
+
+    this.state.rateCards = this.state.rateCards.filter(rc => rc.id !== id);
+    this.recomputeAndPersist();
+    return { ok: true };
   }
 }
 

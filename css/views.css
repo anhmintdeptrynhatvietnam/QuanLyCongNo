@@ -745,3 +745,100 @@
   border-color: var(--warning-500);
 }
 
+/* ============================================
+   DANH MỤC DÙNG CHUNG & BẢNG GIÁ
+   ============================================ */
+
+.catalog-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border-main);
+  margin-bottom: var(--space-4);
+}
+
+.catalog-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.catalog-tab:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.catalog-tab.active {
+  color: var(--primary-600);
+  border-bottom-color: var(--primary-600);
+}
+
+.catalog-tab i {
+  width: 15px;
+  height: 15px;
+}
+
+.catalog-tab-count {
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--bg-surface-subtle);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.catalog-tab.active .catalog-tab-count {
+  background: var(--primary-600);
+  color: #fff;
+}
+
+/* Trạng thái thông quan của shipper: quyết định phí giám sát tờ khai 300.000đ,
+   nên phải phân biệt được ngay bằng mắt */
+.badge-customs-yes {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success-600);
+}
+
+.badge-customs-no {
+  background: var(--bg-surface-subtle);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .badge-customs-yes { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+
+/* Một dòng phí cố định trong form bảng giá */
+.rc-fee-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 90px auto 32px;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.rc-fee-customs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .rc-fee-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+

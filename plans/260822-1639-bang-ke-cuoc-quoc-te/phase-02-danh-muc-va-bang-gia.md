@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Danh mục dùng chung & bảng giá"
-status: pending
+status: completed
 priority: P1
 effort: "1d"
 dependencies: [1]
@@ -121,6 +121,21 @@ state.rateCards = [];
 `loadAll`/`saveAll`/`exportBackupJSON` sang chạy theo `PERSISTED_BRANCHES`, nên
 thêm nhánh mới chỉ là thêm dòng vào registry trong `config.js`.
 
+### Phát sinh khi thực hiện: `state.js` có 7 chỗ gán nhánh, không phải 1
+
+Phase 01 mới chỉ đưa registry vào tầng lưu trữ. Bản thân `state.js` vẫn gán từng
+nhánh bằng tay ở **7 chỗ**: `init`, cache local sau đăng nhập, chuyển dữ liệu
+Khách, nhánh rỗng, tải Cloud, Realtime sync, **và đăng xuất**.
+
+Chỗ thứ 7 (đăng xuất) đã bị bỏ sót ở Phase 01: nó không nạp lại `exchangeRates`,
+nên sau khi đăng xuất, tỷ giá của tài khoản vừa dùng vẫn nằm trong state rồi bị
+`recomputeAndPersist` ghi sang khóa lưu trữ của chế độ Khách — vừa hiển thị sai
+vừa lẫn dữ liệu giữa hai tài khoản.
+
+Đã thêm `StateStore.applyBranches(source)` duyệt `PERSISTED_BRANCHES` và thay cả
+7 chỗ. Nhờ vậy Phase 04 thêm `manifests` không phải sửa chỗ nào trong `state.js`.
+Đây là cùng một loại lỗi mà red team #2 chỉ ra, chỉ ở tầng khác.
+
 ## Implementation Steps
 
 1. Thêm `STORAGE_KEYS` mới, `CATALOG_DEFS` và 2 dòng `PERSISTED_BRANCHES` vào
@@ -142,15 +157,15 @@ thêm nhánh mới chỉ là thêm dòng vào registry trong `config.js`.
 
 ## Success Criteria
 
-- [ ] Tạo/sửa/xoá được cả 5 danh mục qua một component chung, không code lặp
-- [ ] Shipper lưu `customsCleared` độc lập với tên
-- [ ] Gõ tên `COVATEC CO.,LTD TQ` vào form → lưu thành name `COVATEC CO.,LTD` + cờ bật
-- [ ] Tạo được bảng giá COVATEC: `baseFee = 20000`, `stepFee = 8750`, `fixedFees`
+- [x] Tạo/sửa/xoá được cả 5 danh mục qua một component chung, không code lặp
+- [x] Shipper lưu `customsCleared` độc lập với tên
+- [x] Gõ tên `COVATEC CO.,LTD TQ` vào form → lưu thành name `COVATEC CO.,LTD` + cờ bật
+- [x] Tạo được bảng giá COVATEC: `baseFee = 20000`, `stepFee = 8750`, `fixedFees`
       có phí giám sát tờ khai 300.000đ với `requiresCustoms: true`
-- [ ] Xoá bản ghi đang được tham chiếu bị chặn kèm thông báo rõ đang bị dùng ở đâu
-- [ ] Dữ liệu sống sót qua reload trang và qua đồng bộ Firestore
-- [ ] Bấm nav "Danh mục" thật sự mở được view, không rơi về dashboard (red team #1)
-- [ ] Xuất sao lưu JSON có chứa `catalogs` và `rateCards` (red team #2)
+- [x] Xoá bản ghi đang được tham chiếu bị chặn kèm thông báo rõ đang bị dùng ở đâu
+- [x] Dữ liệu sống sót qua reload trang và qua đồng bộ Firestore
+- [x] Bấm nav "Danh mục" thật sự mở được view, không rơi về dashboard (red team #1)
+- [x] Xuất sao lưu JSON có chứa `catalogs` và `rateCards` (red team #2)
 
 ## Risk Assessment
 

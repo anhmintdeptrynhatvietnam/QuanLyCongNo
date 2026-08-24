@@ -14,6 +14,8 @@ export const STORAGE_KEYS = {
   PAYMENT_REQUESTS: "qlcn_payment_requests_v1",
   SETTINGS: "qlcn_settings_v1",
   EXCHANGE_RATES: "qlcn_exchange_rates_v1",
+  CATALOGS: "qlcn_catalogs_v1",
+  RATE_CARDS: "qlcn_rate_cards_v1",
   AUDIT_LOGS: "qlcn_audit_logs_v1",
   THEME: "qlcn_theme_mode",
   CURRENT_USER: "qlcn_current_user_v1"
@@ -189,13 +191,22 @@ export const DEFAULT_SETTINGS = {
   enableFirebaseSync: false
 };
 
+/** Các loại danh mục dùng chung của bảng kê cước quốc tế. */
+export const CATALOG_TYPES = ["shippers", "consignees", "flights", "ports", "items"];
+
+/** Danh mục rỗng, dùng làm giá trị mặc định và khi reset dữ liệu. */
+export function emptyCatalogs() {
+  return CATALOG_TYPES.reduce((acc, type) => ({ ...acc, [type]: [] }), {});
+}
+
 /**
  * Đăng ký các nhánh state được lưu trữ lâu dài.
  *
- * StorageService.loadAll / saveAll / exportBackupJSON đều duyệt danh sách này,
- * nên thêm một nhánh dữ liệu mới chỉ cần thêm một dòng ở đây. Trước đây ba hàm
- * đó liệt kê tên nhánh bằng destructuring riêng lẻ, khiến nhánh mới bị bỏ khỏi
- * bản sao lưu JSON mà không báo lỗi.
+ * StorageService.loadAll / saveAll / exportBackupJSON và
+ * FirebaseService.saveUserData đều duyệt danh sách này, nên thêm một nhánh dữ
+ * liệu mới chỉ cần thêm một dòng ở đây. Trước đây bốn hàm đó liệt kê tên nhánh
+ * bằng tay, khiến nhánh mới bị bỏ khỏi bản sao lưu JSON và khỏi payload đồng bộ
+ * Cloud mà không báo lỗi.
  */
 export const PERSISTED_BRANCHES = [
   { key: "partners", storageKey: STORAGE_KEYS.PARTNERS, fallback: () => [] },
@@ -203,7 +214,9 @@ export const PERSISTED_BRANCHES = [
   { key: "payments", storageKey: STORAGE_KEYS.PAYMENTS, fallback: () => [] },
   { key: "paymentRequests", storageKey: STORAGE_KEYS.PAYMENT_REQUESTS, fallback: () => [] },
   { key: "exchangeRates", storageKey: STORAGE_KEYS.EXCHANGE_RATES, fallback: () => [] },
-  // settings là object, không phải mảng -> fallback riêng
+  { key: "rateCards", storageKey: STORAGE_KEYS.RATE_CARDS, fallback: () => [] },
+  // Hai nhánh dưới là object, không phải mảng -> đánh dấu isObject
+  { key: "catalogs", storageKey: STORAGE_KEYS.CATALOGS, fallback: () => emptyCatalogs(), isObject: true },
   { key: "settings", storageKey: STORAGE_KEYS.SETTINGS, fallback: () => ({ ...DEFAULT_SETTINGS }), isObject: true }
 ];
 
@@ -231,4 +244,81 @@ export const EXCHANGE_RATE_IMPORT = {
   colUsdToVnd: 4,  // cột E: USD -> VND
   // Quá tỷ lệ này thì dừng cả lần nhập thay vì nhập một phần dữ liệu đáng ngờ
   maxRejectRatio: 0.2
+};
+
+// ============================================================
+// DANH MỤC DÙNG CHUNG & BẢNG GIÁ
+// ============================================================
+
+/** Vai trò của một sân bay trong tuyến vận chuyển */
+export const PORT_KINDS = {
+  POL: "POL",   // Port of Loading - điểm đi
+  POD: "POD",   // Port of Discharge - điểm đến
+  BOTH: "BOTH"
+};
+
+export const PORT_KIND_LABELS = {
+  POL: "POL - Điểm đi",
+  POD: "POD - Điểm đến",
+  BOTH: "Cả hai chiều"
+};
+
+/**
+ * Hậu tố thông quan trong cột SHIPPER của bảng kê.
+ *
+ * KTQ phải đứng TRƯỚC TQ trong danh sách: chuỗi "KTQ" chứa "TQ", nên thử "TQ"
+ * trước sẽ nhận diện sai "...KTQ" thành "...K" + thông quan, tức cộng oan
+ * 300.000đ cho một lô không thông quan.
+ */
+export const CUSTOMS_SUFFIXES = [
+  { suffix: "KTQ", customsCleared: false },
+  { suffix: "TQ", customsCleared: true }
+];
+
+/**
+ * Định nghĩa 5 danh mục dùng chung. Một component CRUD duy nhất dựng bảng và form
+ * từ cấu hình này, nên thêm loại danh mục mới không phải viết thêm màn hình.
+ */
+export const CATALOG_DEFS = {
+  shippers: {
+    label: "Shipper (Người gửi)",
+    icon: "package",
+    fields: [
+      { key: "name", label: "Tên người gửi", type: "text", required: true, placeholder: "COVATEC VIETNAM CO., LTD" },
+      {
+        key: "customsCleared", label: "Có thông quan (TQ)", type: "checkbox",
+        hint: "Bật = TQ, hệ thống tự cộng phí giám sát tờ khai. Tắt = KTQ, không cộng."
+      }
+    ]
+  },
+  consignees: {
+    label: "Consignee (Người nhận)",
+    icon: "package-check",
+    fields: [
+      { key: "name", label: "Tên người nhận", type: "text", required: true, placeholder: "COVATEC CO.,LTD. (JOONGBU BRANCH)" }
+    ]
+  },
+  flights: {
+    label: "Mã chuyến bay",
+    icon: "plane",
+    fields: [
+      { key: "code", label: "Mã chuyến bay", type: "text", required: true, uppercase: true, placeholder: "OZ734" }
+    ]
+  },
+  ports: {
+    label: "Sân bay",
+    icon: "map-pin",
+    fields: [
+      { key: "code", label: "Mã IATA", type: "text", required: true, uppercase: true, placeholder: "HAN" },
+      { key: "name", label: "Tên đầy đủ", type: "text", placeholder: "Hà Nội - Nội Bài" },
+      { key: "kind", label: "Vai trò", type: "select", options: PORT_KIND_LABELS, defaultValue: PORT_KINDS.BOTH }
+    ]
+  },
+  items: {
+    label: "Tên sản phẩm",
+    icon: "box",
+    fields: [
+      { key: "name", label: "Tên sản phẩm", type: "text", required: true, placeholder: "PIN BLOCK" }
+    ]
+  }
 };
