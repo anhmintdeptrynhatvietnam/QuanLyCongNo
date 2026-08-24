@@ -721,3 +721,27 @@
   color: #0f172a;
 }
 
+/* ============================================
+   TỶ GIÁ THEO NGÀY
+   ============================================ */
+
+/**
+ * Ô nhập số thập phân (tỷ giá, trọng lượng hàng).
+ * Cố tình KHÔNG dùng class .currency-input: helper tiền tệ xóa mọi ký tự không
+ * phải chữ số, nên 18.19 sẽ bị biến thành 1819.
+ */
+.decimal-input {
+  height: 32px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tô nền bằng màu cảnh báo pha trong suốt để đọc được ở cả theme sáng và tối
+   (--warning-50 là màu sáng cố định, không có bản ghi đè cho theme tối) */
+.rate-row-missing {
+  background: rgb(245 158 11 / 0.1);
+}
+
+.decimal-input.is-missing {
+  border-color: var(--warning-500);
+}
+

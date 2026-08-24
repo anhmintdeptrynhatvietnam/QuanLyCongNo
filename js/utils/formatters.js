@@ -245,6 +245,52 @@ export function toInputDateFormat(date = new Date()) {
 }
 
 /**
+ * Đọc một ô ngày lấy từ Excel về dạng YYYY-MM-DD.
+ *
+ * Trả về null khi không đọc được, để nơi gọi tự quyết định: nhập hóa đơn thì lùi
+ * về ngày mặc định, còn nhập tỷ giá thì phải bỏ qua dòng đó (gán ngày hôm nay cho
+ * một dòng tỷ giá thiếu ngày sẽ tạo ra tỷ giá sai cho ngày hôm nay).
+ *
+ * Nhận: đối tượng Date, Excel serial number, DD/MM/YYYY, YYYY-MM-DD (và biến thể
+ * phân tách bằng `-` `.` `/`).
+ *
+ * @param {*} val Giá trị ô lấy từ SheetJS
+ * @returns {string|null} YYYY-MM-DD hoặc null
+ */
+export function parseExcelDate(val) {
+  if (!val) return null;
+
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    return toInputDateFormat(val);
+  }
+
+  if (typeof val === "number") {
+    // Excel serial date: số ngày kể từ 1900-01-01, lệch 25569 ngày so với epoch Unix
+    const d = new Date((val - 25569) * 86400 * 1000);
+    if (!isNaN(d.getTime())) return toInputDateFormat(d);
+  }
+
+  const str = String(val).trim();
+
+  // DD/MM/YYYY hoặc DD-MM-YYYY hoặc DD.MM.YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (dmyMatch) {
+    return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
+  }
+
+  // YYYY-MM-DD hoặc YYYY/MM/DD hoặc YYYY.MM.DD
+  const ymdMatch = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (ymdMatch) {
+    return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, "0")}-${ymdMatch[3].padStart(2, "0")}`;
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return toInputDateFormat(d);
+
+  return null;
+}
+
+/**
  * Định dạng phần trăm
  * @param {number} value
  * @returns {string} Ví dụ: 45.5%

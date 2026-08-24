@@ -51,7 +51,7 @@ export class Navigation {
 
   static handleHashChange() {
     const rawHash = window.location.hash.replace("#", "") || "dashboard";
-    const validViews = ["dashboard", "partners", "invoices", "payment-requests", "payments", "reports", "settings"];
+    const validViews = ["dashboard", "partners", "invoices", "payment-requests", "payments", "reports", "exchange-rates", "settings"];
     const activeView = validViews.includes(rawHash) ? rawHash : "dashboard";
 
     // Update active nav class
@@ -71,6 +71,7 @@ export class Navigation {
       "payment-requests": "Quản Lý Giấy Đề Nghị Thanh Toán",
       payments: "Quản Lý Thu Chi & Chứng Từ Thanh Toán",
       reports: "Báo Cáo Tuổi Nợ & Đối Chiếu Công Nợ",
+      "exchange-rates": "Tỷ Giá Ngoại Tệ Theo Ngày",
       settings: "Cài Đặt Hệ Thống & Dữ Liệu"
     };
 

@@ -4,7 +4,7 @@
  * Hỗ trợ Đa tài khoản người dùng, đồng bộ Realtime 2 chiều giữa Thiết bị & Đám mây.
  */
 
-import { FIREBASE_CONFIG } from '../config.js';
+import { FIREBASE_CONFIG, PERSISTED_BRANCHES } from '../config.js';
 
 export class FirebaseService {
   static isInitialized = false;
@@ -274,15 +274,15 @@ export class FirebaseService {
       const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
       const userDocRef = doc(this.db, "users", userId, "state", "current");
 
+      // Dựng payload từ PERSISTED_BRANCHES để nhánh dữ liệu mới tự động được
+      // đồng bộ lên Cloud, không phải thêm tay ở đây (thiếu là mất dữ liệu ngầm)
       const rawPayload = {
-        partners: stateData.partners || [],
-        invoices: stateData.invoices || [],
-        payments: stateData.payments || [],
-        paymentRequests: stateData.paymentRequests || [],
-        settings: stateData.settings || {},
         updatedAt: new Date().toISOString(),
         updatedByEmail: this.currentUser?.email || ""
       };
+      for (const branch of PERSISTED_BRANCHES) {
+        rawPayload[branch.key] = stateData[branch.key] ?? branch.fallback();
+      }
 
       // Sanitize để loại bỏ hoàn toàn các trường undefined tránh gây lỗi Firestore setDoc
       const payload = JSON.parse(JSON.stringify(rawPayload));

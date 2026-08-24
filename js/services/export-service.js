@@ -3,7 +3,7 @@
  * Xuất dữ liệu ra file Excel (SheetJS) và tạo Biên bản đối chiếu công nợ.
  */
 
-import { formatCurrency, formatDate, toInputDateFormat } from '../utils/formatters.js';
+import { formatCurrency, formatDate, toInputDateFormat, parseExcelDate } from '../utils/formatters.js';
 
 export class ExportService {
   /**
@@ -526,37 +526,9 @@ export class ExportService {
             return str.toLowerCase().replace(/[^a-z0-9]/g, "");
           };
 
-          const parseDateString = (val, fallbackDate = new Date()) => {
-            if (!val) return toInputDateFormat(fallbackDate);
-            if (val instanceof Date && !isNaN(val.getTime())) {
-              return toInputDateFormat(val);
-            }
-            if (typeof val === "number") {
-              // Xử lý Excel serial date number
-              const d = new Date((val - 25569) * 86400 * 1000);
-              if (!isNaN(d.getTime())) return toInputDateFormat(d);
-            }
-            const str = String(val).trim();
-            // Định dạng DD/MM/YYYY hoặc DD-MM-YYYY hoặc DD.MM.YYYY
-            const dmyMatch = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-            if (dmyMatch) {
-              const day = dmyMatch[1].padStart(2, "0");
-              const month = dmyMatch[2].padStart(2, "0");
-              const year = dmyMatch[3];
-              return `${year}-${month}-${day}`;
-            }
-            // Định dạng YYYY-MM-DD hoặc YYYY/MM/DD
-            const ymdMatch = str.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
-            if (ymdMatch) {
-              const year = ymdMatch[1];
-              const month = ymdMatch[2].padStart(2, "0");
-              const day = ymdMatch[3].padStart(2, "0");
-              return `${year}-${month}-${day}`;
-            }
-            const d = new Date(str);
-            if (!isNaN(d.getTime())) return toInputDateFormat(d);
-            return toInputDateFormat(fallbackDate);
-          };
+          // Đọc ngày dùng chung với phần nhập tỷ giá; ở đây ô trống lùi về ngày mặc định
+          const parseDateString = (val, fallbackDate = new Date()) =>
+            parseExcelDate(val) || toInputDateFormat(fallbackDate);
 
           const invoices = [];
           const seenInFileInvoiceNumbers = new Set();

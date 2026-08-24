@@ -48,7 +48,7 @@ xuất Excel gửi khách và ghi nhận công nợ phải thu.
 
 | Phase | Name | Depends on | Status |
 |---|---|---|---|
-| 01 | [Tỷ giá theo ngày](phase-01-ty-gia-theo-ngay.md) | — | Not started |
+| 01 | [Tỷ giá theo ngày](phase-01-ty-gia-theo-ngay.md) | — | Complete |
 | 02 | [Danh mục dùng chung & bảng giá](phase-02-danh-muc-va-bang-gia.md) | 01 | Not started |
 | 03 | [Engine tính toán](phase-03-engine-tinh-toan.md) | 01, 02 | Not started |
 | 04 | [Giao diện bảng kê](phase-04-giao-dien-bang-ke.md) | 03 | Not started |

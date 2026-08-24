@@ -11,6 +11,7 @@ import { InvoicesView } from './components/invoices.js';
 import { PaymentRequestsView } from './components/payment-requests.js';
 import { PaymentsView } from './components/payments.js';
 import { ReportsView } from './components/reports.js';
+import { ExchangeRatesView } from './components/exchange-rates.js';
 import { SettingsView } from './components/settings.js';
 import { Modal } from './components/modal.js';
 import { qs } from './utils/dom.js';
@@ -25,6 +26,7 @@ class App {
       "payment-requests": new PaymentRequestsView("main-content"),
       payments: new PaymentsView("main-content"),
       reports: new ReportsView("main-content"),
+      "exchange-rates": new ExchangeRatesView("main-content"),
       settings: new SettingsView("main-content")
     };
   }

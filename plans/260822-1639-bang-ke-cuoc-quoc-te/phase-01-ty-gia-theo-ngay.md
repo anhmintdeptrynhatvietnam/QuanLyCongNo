@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Tỷ giá theo ngày"
-status: pending
+status: completed
 priority: P1
 effort: "0.5d"
 dependencies: []
@@ -174,9 +174,17 @@ Phase 04 (cột `G.W/T`, `C.WT`).
    (`parseExcelDate`), đổi `parseInvoicesFromExcel` sang dùng helper đó — kiểm tra
    lại import hóa đơn không hồi quy.
 3. Viết `exchange-rate-service.js`:
-   - `parseExchangeRatesFromExcel(file)` → `{ rates, rejected, error }`
-   - `getRateForDate(rates, date)` → `number | null`
-   - `mergeRates(existing, incoming)` → upsert theo `date`
+   - `mapRowsToRates(rows)` → `{ rates, rejected, skipped, scanned, fatalError }` (hàm thuần)
+   - `parseFromExcel(file)` → đọc file rồi gọi `mapRowsToRates`
+   - `getKrwToVnd(rates, date)` / `getUsdToVnd(rates, date)` → `number | null`
+   - `merge(existing, incoming)` → upsert theo `date`
+   - `listByMonth` / `availableMonths` cho phần hiển thị
+
+   *Lệch so với thiết kế ban đầu (đã thực hiện):* tách `mapRowsToRates` khỏi
+   `parseFromExcel` để logic nhận diện cột và kiểm tra biên chạy được trong Node
+   và có test tự động — đây là chỗ một lỗi im lặng gây sai tiền nghìn lần. Và tách
+   `getRateForDate` thành `getKrwToVnd` / `getUsdToVnd` vì file nguồn có hai loại
+   tỷ giá, một hàm chung sẽ phải truyền thêm tham số loại tiền mà không rõ hơn.
 4. Nối vào `state.js`: state + action + persist + payload Firestore.
 5. View `exchange-rates.js` kế thừa `BaseComponent`: nút import, bảng theo tháng,
    sửa tay một ngày (dùng `input type="number" step="0.01"`, **không** dùng
@@ -188,17 +196,17 @@ Phase 04 (cột `G.W/T`, `C.WT`).
 
 ## Success Criteria
 
-- [ ] Import `4- TH TỈ GIÁ.xlsx` nhập được các ngày có tỷ giá, bỏ qua ngày trống
-- [ ] `getRateForDate(rates, "2026-06-16")` trả về `18.1`
-- [ ] `getRateForDate(rates, "2026-05-21")` trả về `18.3`
-- [ ] Ngày ngoài khoảng dữ liệu trả `null`, không nội suy
-- [ ] File có cột lệch bị từ chối kèm thông báo nêu rõ số dòng sai
-- [ ] Import lại cùng file không sinh bản ghi trùng ngày
-- [ ] Import hóa đơn cũ (`parseInvoicesFromExcel`) vẫn chạy đúng sau khi trích helper
-- [ ] Bấm nav "Tỷ giá" thật sự mở được view, không rơi về dashboard (red team #1)
-- [ ] Xuất sao lưu JSON có chứa `exchangeRates`; khôi phục lại đúng (red team #2)
-- [ ] Xuất/khôi phục backup không làm mất dữ liệu cũ sau khi refactor `storage.js`
-- [ ] Sửa tay tỷ giá gõ được `18.19` và lưu đúng `18.19`, không thành `1819` (red team #3)
+- [x] Import `4- TH TỈ GIÁ.xlsx` nhập được các ngày có tỷ giá, bỏ qua ngày trống
+- [x] `getKrwToVnd(rates, "2026-06-16")` trả về `18.1`
+- [x] `getKrwToVnd(rates, "2026-05-21")` trả về `18.3`
+- [x] Ngày ngoài khoảng dữ liệu trả `null`, không nội suy
+- [x] File có cột lệch bị từ chối kèm thông báo nêu rõ số dòng sai
+- [x] Import lại cùng file không sinh bản ghi trùng ngày
+- [x] Import hóa đơn cũ (`parseInvoicesFromExcel`) vẫn chạy đúng sau khi trích helper
+- [x] Bấm nav "Tỷ giá" thật sự mở được view, không rơi về dashboard (red team #1)
+- [x] Xuất sao lưu JSON có chứa `exchangeRates`; khôi phục lại đúng (red team #2)
+- [x] Xuất/khôi phục backup không làm mất dữ liệu cũ sau khi refactor `storage.js`
+- [x] Sửa tay tỷ giá gõ được `18.19` và lưu đúng `18.19`, không thành `1819` (red team #3)
 
 ## Risk Assessment
 

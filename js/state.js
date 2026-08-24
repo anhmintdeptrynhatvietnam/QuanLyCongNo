@@ -8,6 +8,7 @@ import { StorageService } from './services/storage.js';
 import { recalculatePartnerBalances, calculateInvoiceStatus, autoAllocatePaymentFIFO } from './services/debt-engine.js';
 import { DEFAULT_SETTINGS, PAYMENT_REQUEST_STATUS, getVoucherType, VOUCHER_TYPE_PREFIXES, INVOICE_TYPES, PAYMENT_TYPES } from './config.js';
 import { FirebaseService } from './services/firebase.js';
+import { ExchangeRateService } from './services/exchange-rate-service.js';
 
 class StateStore {
   constructor() {
@@ -17,6 +18,7 @@ class StateStore {
       invoices: [],
       payments: [],
       paymentRequests: [],
+      exchangeRates: [], // Tỷ giá theo ngày, phục vụ bảng kê cước quốc tế
       settings: { ...DEFAULT_SETTINGS },
       activeView: "dashboard",
       searchQuery: "",
@@ -35,6 +37,7 @@ class StateStore {
     this.state.invoices = loaded.invoices || [];
     this.state.payments = loaded.payments || [];
     this.state.paymentRequests = loaded.paymentRequests || [];
+    this.state.exchangeRates = loaded.exchangeRates || [];
     this.state.settings = loaded.settings || { ...DEFAULT_SETTINGS };
 
     this.recomputeAndPersist(false);
@@ -69,6 +72,7 @@ class StateStore {
         this.state.invoices = localData.invoices || [];
         this.state.payments = localData.payments || [];
         this.state.paymentRequests = localData.paymentRequests || [];
+        this.state.exchangeRates = localData.exchangeRates || [];
         this.state.settings = localData.settings || { ...DEFAULT_SETTINGS };
       } else {
         // Nếu user này chưa có cache local, kiểm tra xem có dữ liệu Guest (Offline) vừa nhập không
@@ -81,6 +85,7 @@ class StateStore {
           this.state.invoices = guestData.invoices || [];
           this.state.payments = guestData.payments || [];
           this.state.paymentRequests = guestData.paymentRequests || [];
+          this.state.exchangeRates = guestData.exchangeRates || [];
           this.state.settings = guestData.settings || { ...DEFAULT_SETTINGS };
           StorageService.saveAll(this.state, userId);
         } else {
@@ -88,6 +93,7 @@ class StateStore {
           this.state.invoices = [];
           this.state.payments = [];
           this.state.paymentRequests = [];
+          this.state.exchangeRates = [];
           this.state.settings = { ...DEFAULT_SETTINGS };
         }
       }
@@ -103,6 +109,7 @@ class StateStore {
           }));
           this.state.payments = cloudData.payments || [];
           this.state.paymentRequests = cloudData.paymentRequests || [];
+          this.state.exchangeRates = cloudData.exchangeRates || [];
           this.state.settings = cloudData.settings || { ...DEFAULT_SETTINGS };
           this.state.syncStatus = "synced";
           this.state.lastSyncError = null;
@@ -132,6 +139,7 @@ class StateStore {
           }));
           this.state.payments = remoteData.payments || [];
           this.state.paymentRequests = remoteData.paymentRequests || [];
+          this.state.exchangeRates = remoteData.exchangeRates || [];
           this.state.settings = remoteData.settings || { ...DEFAULT_SETTINGS };
           this.state.partners = recalculatePartnerBalances(this.state.partners, this.state.invoices);
           this.state.syncStatus = "synced";
@@ -203,13 +211,9 @@ class StateStore {
     const userId = this.state.currentUser?.uid || null;
 
     // 3. Ghi dữ liệu xuống LocalStorage
-    StorageService.saveAll({
-      partners: this.state.partners,
-      invoices: this.state.invoices,
-      payments: this.state.payments,
-      paymentRequests: this.state.paymentRequests,
-      settings: this.state.settings
-    }, userId);
+    // Truyền cả state: saveAll chỉ ghi những nhánh có trong PERSISTED_BRANCHES,
+    // nên thêm nhánh dữ liệu mới không cần sửa lại chỗ này.
+    StorageService.saveAll(this.state, userId);
 
     // 4. Đồng bộ lên Cloud Firestore nếu đang đăng nhập
     if (userId && FirebaseService.isInitialized) {
@@ -813,6 +817,7 @@ class StateStore {
     this.state.invoices = demo.invoices;
     this.state.payments = demo.payments;
     this.state.paymentRequests = demo.paymentRequests || [];
+    this.state.exchangeRates = demo.exchangeRates || [];
     this.state.settings = demo.settings;
     this.recomputeAndPersist();
   }
@@ -822,7 +827,47 @@ class StateStore {
     this.state.invoices = [];
     this.state.payments = [];
     this.state.paymentRequests = [];
+    this.state.exchangeRates = [];
     this.state.settings = { ...DEFAULT_SETTINGS };
+    this.recomputeAndPersist();
+  }
+
+  // ==========================================
+  // TỶ GIÁ THEO NGÀY
+  // ==========================================
+
+  /**
+   * Gộp danh sách tỷ giá vừa nhập từ Excel vào dữ liệu hiện có (cập nhật đè theo ngày)
+   * @param {Array} incomingRates
+   * @returns {{added: number, updated: number}}
+   */
+  importExchangeRates(incomingRates = []) {
+    const { rates, added, updated } = ExchangeRateService.merge(this.state.exchangeRates, incomingRates);
+    this.state.exchangeRates = rates;
+    this.recomputeAndPersist();
+    return { added, updated };
+  }
+
+  /**
+   * Sửa hoặc thêm tỷ giá của một ngày
+   * @param {string} date YYYY-MM-DD
+   * @param {{krwToVnd?: number|null, usdToVnd?: number|null}} fields
+   */
+  upsertExchangeRate(date, fields = {}) {
+    if (!date) return;
+    const { rates } = ExchangeRateService.merge(this.state.exchangeRates, [
+      { date, krwToVnd: null, usdToVnd: null, source: "MANUAL", ...fields }
+    ]);
+    this.state.exchangeRates = rates;
+    this.recomputeAndPersist();
+  }
+
+  /**
+   * Xóa tỷ giá của một ngày
+   * @param {string} date YYYY-MM-DD
+   */
+  deleteExchangeRate(date) {
+    this.state.exchangeRates = this.state.exchangeRates.filter(r => r.date !== date);
     this.recomputeAndPersist();
   }
 }

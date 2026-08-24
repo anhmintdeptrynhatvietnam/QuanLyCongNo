@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   PAYMENTS: "qlcn_payments_v1",
   PAYMENT_REQUESTS: "qlcn_payment_requests_v1",
   SETTINGS: "qlcn_settings_v1",
+  EXCHANGE_RATES: "qlcn_exchange_rates_v1",
   AUDIT_LOGS: "qlcn_audit_logs_v1",
   THEME: "qlcn_theme_mode",
   CURRENT_USER: "qlcn_current_user_v1"
@@ -186,4 +187,48 @@ export const DEFAULT_SETTINGS = {
     appId: ""
   },
   enableFirebaseSync: false
+};
+
+/**
+ * Đăng ký các nhánh state được lưu trữ lâu dài.
+ *
+ * StorageService.loadAll / saveAll / exportBackupJSON đều duyệt danh sách này,
+ * nên thêm một nhánh dữ liệu mới chỉ cần thêm một dòng ở đây. Trước đây ba hàm
+ * đó liệt kê tên nhánh bằng destructuring riêng lẻ, khiến nhánh mới bị bỏ khỏi
+ * bản sao lưu JSON mà không báo lỗi.
+ */
+export const PERSISTED_BRANCHES = [
+  { key: "partners", storageKey: STORAGE_KEYS.PARTNERS, fallback: () => [] },
+  { key: "invoices", storageKey: STORAGE_KEYS.INVOICES, fallback: () => [] },
+  { key: "payments", storageKey: STORAGE_KEYS.PAYMENTS, fallback: () => [] },
+  { key: "paymentRequests", storageKey: STORAGE_KEYS.PAYMENT_REQUESTS, fallback: () => [] },
+  { key: "exchangeRates", storageKey: STORAGE_KEYS.EXCHANGE_RATES, fallback: () => [] },
+  // settings là object, không phải mảng -> fallback riêng
+  { key: "settings", storageKey: STORAGE_KEYS.SETTINGS, fallback: () => ({ ...DEFAULT_SETTINGS }), isObject: true }
+];
+
+// ============================================================
+// TỶ GIÁ NGOẠI TỆ (phục vụ Bảng kê chi tiết cước quốc tế)
+// ============================================================
+
+/**
+ * Biên hợp lệ của tỷ giá khi nhập từ Excel.
+ *
+ * Không phải để làm khó người dùng: file tỷ giá nguồn không có dòng tiêu đề nên
+ * cột được nhận diện theo vị trí. Nếu file bị dịch cột, tỷ giá USD (~26.500) sẽ
+ * bị lấy làm tỷ giá KRW (~18), tức hóa đơn sai khoảng 1.400 lần mà số liệu vẫn
+ * trông bình thường. Biên này chặn đúng trường hợp đó.
+ */
+export const EXCHANGE_RATE_BOUNDS = {
+  krwToVnd: { min: 10, max: 40 },        // thực tế dao động 17,7 - 19,9
+  usdToVnd: { min: 15000, max: 40000 }   // thực tế quanh 26.4xx
+};
+
+/** Vị trí cột trong file "TH TỈ GIÁ" (0-based) - file không có dòng tiêu đề. */
+export const EXCHANGE_RATE_IMPORT = {
+  colDate: 1,      // cột B: ngày thật, là khóa tra cứu
+  colKrwToVnd: 3,  // cột D: KRW -> VND (cột mà công thức VLOOKUP lấy)
+  colUsdToVnd: 4,  // cột E: USD -> VND
+  // Quá tỷ lệ này thì dừng cả lần nhập thay vì nhập một phần dữ liệu đáng ngờ
+  maxRejectRatio: 0.2
 };

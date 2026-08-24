@@ -3,7 +3,7 @@
  * Quản lý lưu trữ LocalStorage, xuất/nhập JSON backup, và nạp dữ liệu mẫu kế toán.
  */
 
-import { STORAGE_KEYS, DEFAULT_SETTINGS, PARTNER_TYPES, INVOICE_TYPES, PAYMENT_METHODS, getUserStorageKey } from '../config.js';
+import { STORAGE_KEYS, DEFAULT_SETTINGS, PARTNER_TYPES, INVOICE_TYPES, PAYMENT_METHODS, PERSISTED_BRANCHES, getUserStorageKey } from '../config.js';
 import { calculateInvoiceStatus } from './debt-engine.js';
 import { toInputDateFormat } from '../utils/formatters.js';
 
@@ -35,24 +35,13 @@ export class StorageService {
   }
 
   /**
-   * Tải toàn bộ state từ Storage theo từng người dùng (User-scoped)
-   * @param {string|null} userId
+   * Chuẩn hóa loại chứng từ và tiền tố UNT / UNC cho các phiếu chuyển khoản.
+   * Chạy sau khi đọc từ Storage để dữ liệu cũ (trước khi có voucherType) vẫn đúng.
+   * @param {Array} payments
+   * @returns {Array}
    */
-  static loadAll(userId = null) {
-    const kPartners = getUserStorageKey(STORAGE_KEYS.PARTNERS, userId);
-    const kInvoices = getUserStorageKey(STORAGE_KEYS.INVOICES, userId);
-    const kPayments = getUserStorageKey(STORAGE_KEYS.PAYMENTS, userId);
-    const kPaymentRequests = getUserStorageKey(STORAGE_KEYS.PAYMENT_REQUESTS, userId);
-    const kSettings = getUserStorageKey(STORAGE_KEYS.SETTINGS, userId);
-
-    let partners = this.getItem(kPartners, []);
-    let invoices = this.getItem(kInvoices, []);
-    let payments = this.getItem(kPayments, []);
-    let paymentRequests = this.getItem(kPaymentRequests, []);
-    let settings = this.getItem(kSettings, { ...DEFAULT_SETTINGS });
-
-    // Chuẩn hóa loại chứng từ và tiền tố UNT / UNC nếu là chuyển khoản
-    payments = (Array.isArray(payments) ? payments : []).map(p => {
+  static normalizePayments(payments) {
+    return (Array.isArray(payments) ? payments : []).map(p => {
       const isReceipt = p.type === 'RECEIPT';
       const isCash = p.paymentMethod === 'CASH';
       const vType = isReceipt ? (isCash ? 'RECEIPT_CASH' : 'RECEIPT_BANK') : (isCash ? 'PAYMENT_CASH' : 'PAYMENT_BANK');
@@ -68,33 +57,44 @@ export class StorageService {
         paymentNumber: pNum
       };
     });
+  }
 
-    return {
-      partners: Array.isArray(partners) ? partners : [],
-      invoices: Array.isArray(invoices) ? invoices : [],
-      payments: payments,
-      paymentRequests: Array.isArray(paymentRequests) ? paymentRequests : [],
-      settings: settings || { ...DEFAULT_SETTINGS }
-    };
+  /**
+   * Tải toàn bộ state từ Storage theo từng người dùng (User-scoped)
+   * @param {string|null} userId
+   */
+  static loadAll(userId = null) {
+    const result = {};
+
+    for (const branch of PERSISTED_BRANCHES) {
+      const key = getUserStorageKey(branch.storageKey, userId);
+      const raw = this.getItem(key, null);
+      const fallback = branch.fallback();
+
+      if (branch.isObject) {
+        result[branch.key] = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : fallback;
+      } else {
+        result[branch.key] = Array.isArray(raw) ? raw : fallback;
+      }
+    }
+
+    result.payments = this.normalizePayments(result.payments);
+    return result;
   }
 
   /**
    * Lưu toàn bộ state vào Storage theo từng người dùng (User-scoped)
+   * Chỉ ghi những nhánh có mặt trong `data` để lệnh lưu từng phần không xóa nhánh khác.
    * @param {Object} data
    * @param {string|null} userId
    */
-  static saveAll({ partners, invoices, payments, paymentRequests, settings }, userId = null) {
-    const kPartners = getUserStorageKey(STORAGE_KEYS.PARTNERS, userId);
-    const kInvoices = getUserStorageKey(STORAGE_KEYS.INVOICES, userId);
-    const kPayments = getUserStorageKey(STORAGE_KEYS.PAYMENTS, userId);
-    const kPaymentRequests = getUserStorageKey(STORAGE_KEYS.PAYMENT_REQUESTS, userId);
-    const kSettings = getUserStorageKey(STORAGE_KEYS.SETTINGS, userId);
+  static saveAll(data, userId = null) {
+    if (!data || typeof data !== 'object') return;
 
-    if (partners !== undefined) this.setItem(kPartners, partners);
-    if (invoices !== undefined) this.setItem(kInvoices, invoices);
-    if (payments !== undefined) this.setItem(kPayments, payments);
-    if (paymentRequests !== undefined) this.setItem(kPaymentRequests, paymentRequests);
-    if (settings !== undefined) this.setItem(kSettings, settings);
+    for (const branch of PERSISTED_BRANCHES) {
+      if (data[branch.key] === undefined) continue;
+      this.setItem(getUserStorageKey(branch.storageKey, userId), data[branch.key]);
+    }
   }
 
   /**
