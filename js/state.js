@@ -1003,6 +1003,26 @@ class StateStore {
   }
 
   /**
+   * `updatedAt` kế tiếp, đảm bảo tăng nghiêm ngặt so với mốc trước.
+   *
+   * Hai lần lưu liên tiếp trong cùng 1ms (double-click, lưu tự động ngay sau lưu
+   * tay) khiến `new Date().toISOString()` trả về cùng giá trị — khi đó cơ chế
+   * chống ghi đè ở `updateManifest` không phát hiện được xung đột vì so sánh
+   * bằng đúng chuỗi thời gian. Ép tăng thủ công 1ms khi trùng để mốc luôn khác
+   * biệt, tự điều chỉnh lại khi đồng hồ thật bắt kịp.
+   */
+  _nextManifestTimestamp(previousIso) {
+    const now = new Date();
+    if (previousIso) {
+      const prevMs = new Date(previousIso).getTime();
+      if (!Number.isNaN(prevMs) && now.getTime() <= prevMs) {
+        return new Date(prevMs + 1).toISOString();
+      }
+    }
+    return now.toISOString();
+  }
+
+  /**
    * Tạo bảng kê mới.
    * @param {Object} data
    * @returns {{ok: boolean, error?: string, manifest?: Object}}
@@ -1077,7 +1097,7 @@ class StateStore {
       ...current,
       ...changes,
       id: current.id,
-      updatedAt: new Date().toISOString(),
+      updatedAt: this._nextManifestTimestamp(current.updatedAt),
       updatedBy: this.currentEditorLabel()
     };
 

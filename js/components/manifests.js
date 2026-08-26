@@ -15,7 +15,7 @@ import { BaseComponent } from './base-component.js';
 import { stateStore } from '../state.js';
 import { Modal } from './modal.js';
 import { Toast } from './toast.js';
-import { qs, qsa, escapeHtml } from '../utils/dom.js';
+import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
 import { formatCurrency, formatDate, formatDateTime, toInputDateFormat } from '../utils/formatters.js';
 import {
   MANIFEST_COLUMNS, MANIFEST_STATUS, MANIFEST_STATUS_LABELS,
@@ -79,6 +79,28 @@ export class ManifestsView extends BaseComponent {
 
   visibleColumns() {
     return MANIFEST_COLUMNS.filter(c => this.showExtraColumns || !c.extra);
+  }
+
+  /** Cảnh báo thiếu bảng giá / thiếu tỷ giá — tách riêng để refreshTotals cập nhật được */
+  renderBanners(rateCard, missing) {
+    return `
+      ${!rateCard ? `
+        <div class="manifest-banner is-danger">
+          <i data-lucide="alert-circle"></i>
+          <span>Khách hàng này chưa có bảng giá cho tuyến đang dùng. Vào
+          <b>Danh Mục &amp; Bảng Giá</b> tạo bảng giá trước, nếu không cước sẽ tính bằng 0.</span>
+        </div>
+      ` : ''}
+
+      ${missing > 0 ? `
+        <div class="manifest-banner is-warning">
+          <i data-lucide="alert-triangle"></i>
+          <span><b>${missing} dòng chưa có tỷ giá</b> — chưa thể phát hành. Các dòng đó
+          không được tính vào tổng. Nhập tỷ giá cho những ngày đó ở mục
+          <b>Tỷ Giá Theo Ngày</b>.</span>
+        </div>
+      ` : ''}
+    `;
   }
 
   // ============ Render ============
@@ -203,22 +225,7 @@ export class ManifestsView extends BaseComponent {
 
         ${this.renderHeaderForm(state, d, rateCard)}
 
-        ${!rateCard ? `
-          <div class="manifest-banner is-danger">
-            <i data-lucide="alert-circle"></i>
-            <span>Khách hàng này chưa có bảng giá cho tuyến đang dùng. Vào
-            <b>Danh Mục &amp; Bảng Giá</b> tạo bảng giá trước, nếu không cước sẽ tính bằng 0.</span>
-          </div>
-        ` : ''}
-
-        ${missing > 0 ? `
-          <div class="manifest-banner is-warning">
-            <i data-lucide="alert-triangle"></i>
-            <span><b>${missing} dòng chưa có tỷ giá</b> — chưa thể phát hành. Các dòng đó
-            không được tính vào tổng. Nhập tỷ giá cho những ngày đó ở mục
-            <b>Tỷ Giá Theo Ngày</b>.</span>
-          </div>
-        ` : ''}
+        <div id="manifest-banners">${this.renderBanners(rateCard, missing)}</div>
 
         <div class="manifest-table-wrap">
           <table class="manifest-table" id="manifest-table">
@@ -600,6 +607,14 @@ export class ManifestsView extends BaseComponent {
     if (tfoot) tfoot.innerHTML = this.renderTotalsRow(computed, this.visibleColumns());
     const summary = qs('#manifest-summary', this.container);
     if (summary) summary.outerHTML = this.renderSummary(computed);
+
+    // Banner "thiếu tỷ giá" phụ thuộc dữ liệu dòng — phải cập nhật lại ở đây,
+    // nếu không nó đứng yên với số dòng thiếu tỷ giá cũ sau khi sửa ngày/dòng.
+    const banners = qs('#manifest-banners', this.container);
+    if (banners) {
+      banners.innerHTML = this.renderBanners(this.rateCardOf(state, this.draft), computed.missingRateLines.length);
+      refreshLucideIcons();
+    }
   }
 
   // ============ Hành động ============
