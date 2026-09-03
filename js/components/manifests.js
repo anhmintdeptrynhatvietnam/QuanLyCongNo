@@ -19,7 +19,7 @@ import { qs, qsa, escapeHtml, refreshLucideIcons } from '../utils/dom.js';
 import { formatCurrency, formatDate, formatDateTime, toInputDateFormat } from '../utils/formatters.js';
 import {
   MANIFEST_COLUMNS, MANIFEST_STATUS, MANIFEST_STATUS_LABELS,
-  DEFAULT_DESCRIPTION_TEMPLATE, DEFAULT_DELIVERY_CHARGE
+  DEFAULT_DESCRIPTION_TEMPLATE, DEFAULT_DELIVERY_CHARGE, STORAGE_KEYS
 } from '../config.js';
 import { computeSheet, createLine, renderLineDescription } from '../services/manifest-engine.js';
 import { ExchangeRateService } from '../services/exchange-rate-service.js';
@@ -33,6 +33,11 @@ export class ManifestsView extends BaseComponent {
     this.baseUpdatedAt = null;
     this.dirty = false;
     this.showExtraColumns = false;
+
+    // Bảng cần ~2552px ở bề rộng cột thường — vẫn quá màn 1920 kể cả khi đã ẩn
+    // sidebar, nên chế độ nén bật sẵn; người dùng tắt thì nhớ lựa chọn đó.
+    this.compact = localStorage.getItem(STORAGE_KEYS.MANIFEST_COMPACT) !== '0';
+    this.metaOpen = true;
   }
 
   /**
@@ -81,26 +86,126 @@ export class ManifestsView extends BaseComponent {
     return MANIFEST_COLUMNS.filter(c => this.showExtraColumns || !c.extra);
   }
 
+  /** Bề rộng tối thiểu của một cột theo chế độ đang bật */
+  columnWidth(col) {
+    return this.compact ? (col.compactWidth || col.width) : col.width;
+  }
+
+  /**
+   * Vị trí trái của các cột dính, cộng dồn theo bề rộng ĐANG dùng.
+   *
+   * Trước đây offset nằm cứng trong CSS (left: 44px / 174px) nên đổi bề rộng cột
+   * là ba cột dính chồng lên nhau. Tính ở đây thì chế độ nén và chế độ thường
+   * dùng chung một đường dẫn, không phải sửa CSS mỗi lần đổi số.
+   */
+  stickyOffsets(cols) {
+    const offsets = {};
+    let left = 0;
+    for (const col of cols) {
+      if (!col.sticky) break; // các cột dính luôn nằm liền nhau ở đầu bảng
+      offsets[col.key] = left;
+      left += this.columnWidth(col);
+    }
+    return offsets;
+  }
+
+  /** Style vị trí cho ô của cột dính */
+  stickyStyle(col, offsets) {
+    return col.sticky ? ` style="left: ${offsets[col.key]}px;"` : '';
+  }
+
+  /** Class cho ô: cột dính cuối cùng được đánh dấu để kẻ đường phân vùng */
+  stickyClass(col, offsets) {
+    if (!col.sticky) return '';
+    const keys = Object.keys(offsets);
+    return keys[keys.length - 1] === col.key ? 'is-sticky is-sticky-last' : 'is-sticky';
+  }
+
+  /**
+   * Bật/tắt chế độ toàn màn hình cho màn hình nhập.
+   *
+   * Cờ đặt trên <body> chứ không trong view: sidebar và top header nằm ngoài
+   * container của view, chỉ CSS ở cấp body mới với tới được.
+   */
+  setFullscreen(on) {
+    document.body.classList.toggle('mf-fullscreen', on);
+  }
+
+  /** Đổi hash mà KHÔNG kích hoạt hashchange — tránh vòng lặp mở lại chính nó */
+  syncHash(hash) {
+    if (window.location.hash === hash) return;
+    history.replaceState(null, '', hash);
+  }
+
+  /**
+   * Router gọi vào đây: "#manifests/<id>" mở thẳng màn hình nhập của bảng kê đó,
+   * "#manifests" trả về danh sách.
+   */
+  applyRoute(param, state) {
+    if (param) {
+      if (this.mode === 'edit' && this.draft && this.draft.id === param) {
+        this.setFullscreen(true);
+        super.mount(state);
+        return;
+      }
+      if ((state.manifests || []).some(x => x.id === param)) {
+        this.openManifest(param);
+        return;
+      }
+      Toast.warning('Không tìm thấy bảng kê trong đường dẫn. Đã mở danh sách.');
+      this.syncHash('#manifests');
+    }
+
+    if (this.mode === 'edit' && this.draft) {
+      if (this.dirty && !confirm('Bảng kê có thay đổi chưa lưu. Rời khỏi và bỏ thay đổi?')) {
+        this.syncHash(`#manifests/${this.draft.id}`);
+        this.setFullscreen(true);
+        super.mount(state);
+        return;
+      }
+      this.draft = null;
+      this.baseUpdatedAt = null;
+      this.dirty = false;
+    }
+
+    this.mode = 'list';
+    this.setFullscreen(false);
+    super.mount(state);
+  }
+
+  /** Rời view: luôn trả shell về trạng thái thường, nếu không sidebar sẽ mất ở view khác */
+  destroy() {
+    this.setFullscreen(false);
+  }
+
   /** Cảnh báo thiếu bảng giá / thiếu tỷ giá — tách riêng để refreshTotals cập nhật được */
   renderBanners(rateCard, missing) {
-    return `
-      ${!rateCard ? `
+    const banners = [];
+
+    if (!rateCard) {
+      banners.push(`
         <div class="manifest-banner is-danger">
           <i data-lucide="alert-circle"></i>
           <span>Khách hàng này chưa có bảng giá cho tuyến đang dùng. Vào
           <b>Danh Mục &amp; Bảng Giá</b> tạo bảng giá trước, nếu không cước sẽ tính bằng 0.</span>
         </div>
-      ` : ''}
+      `);
+    }
 
-      ${missing > 0 ? `
+    if (missing > 0) {
+      banners.push(`
         <div class="manifest-banner is-warning">
           <i data-lucide="alert-triangle"></i>
           <span><b>${missing} dòng chưa có tỷ giá</b> — chưa thể phát hành. Các dòng đó
           không được tính vào tổng. Nhập tỷ giá cho những ngày đó ở mục
           <b>Tỷ Giá Theo Ngày</b>.</span>
         </div>
-      ` : ''}
-    `;
+      `);
+    }
+
+    // Rỗng thật sự (không phải chuỗi toàn khoảng trắng) để CSS :empty bỏ luôn
+    // phần đệm — màn hình nhập không được mất chiều cao vào một khối trống.
+    return banners.join('');
   }
 
   // ============ Render ============
@@ -188,6 +293,11 @@ export class ManifestsView extends BaseComponent {
     `;
   }
 
+  /**
+   * Màn hình nhập chạy toàn màn hình: sidebar và top header bị ẩn, mọi khối phụ
+   * (thanh công cụ, thông tin đầu bảng, tổng cuối) đều cố định chiều cao, phần
+   * còn lại của viewport thuộc về bảng.
+   */
   renderEditor(state) {
     const d = this.draft;
     const computed = this.computeDraft(state, d);
@@ -195,21 +305,35 @@ export class ManifestsView extends BaseComponent {
     const issued = d.status === MANIFEST_STATUS.ISSUED;
     const missing = computed.missingRateLines.length;
     const cols = this.visibleColumns();
+    const offsets = this.stickyOffsets(cols);
 
     return `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <button class="btn btn-icon btn-sm" id="btn-back-list" title="Về danh sách">
-              <i data-lucide="arrow-left"></i>
+      <div class="mf-workspace ${this.compact ? 'is-compact' : ''}">
+        <div class="mf-topbar">
+          <div class="mf-topbar-left">
+            <button class="btn btn-secondary btn-sm" id="btn-back-list" title="Đóng màn hình nhập, quay lại danh sách bảng kê">
+              <i data-lucide="arrow-left"></i><span>Danh sách</span>
             </button>
-            <span>Bảng kê ${escapeHtml(d.sheetNo)}</span>
+            <span class="mf-topbar-title">Bảng kê ${escapeHtml(d.sheetNo)}</span>
             <span class="badge ${issued ? 'badge-paid' : 'badge-unpaid'}">
               ${MANIFEST_STATUS_LABELS[d.status]}
             </span>
             ${this.dirty ? '<span class="badge badge-partial">Chưa lưu</span>' : ''}
           </div>
-          <div class="flex items-center" style="gap: var(--space-2);">
+
+          <div class="mf-topbar-right">
+            <button class="btn btn-secondary btn-sm" id="btn-toggle-meta"
+                    title="Ẩn/hiện thông tin đầu bảng kê để bảng cao thêm">
+              <i data-lucide="${this.metaOpen ? 'chevron-up' : 'chevron-down'}"></i>
+              <span>Thông tin</span>
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-toggle-compact"
+                    title="${this.compact
+                      ? 'Đang nén bề rộng cột. Bấm để trả cột về bề rộng thường.'
+                      : 'Nén bề rộng cột để bớt cuộn ngang.'}">
+              <i data-lucide="${this.compact ? 'maximize-2' : 'minimize-2'}"></i>
+              <span>${this.compact ? 'Cột rộng' : 'Nén cột'}</span>
+            </button>
             <button class="btn btn-secondary btn-sm" id="btn-toggle-extra">
               <i data-lucide="${this.showExtraColumns ? 'eye-off' : 'eye'}"></i>
               <span>${this.showExtraColumns ? 'Ẩn' : 'Hiện'} phí phụ</span>
@@ -223,23 +347,26 @@ export class ManifestsView extends BaseComponent {
           </div>
         </div>
 
-        ${this.renderHeaderForm(state, d, rateCard)}
+        <div class="mf-meta ${this.metaOpen ? '' : 'is-hidden'}">
+          ${this.renderHeaderForm(state, d, rateCard)}
+        </div>
 
-        <div id="manifest-banners">${this.renderBanners(rateCard, missing)}</div>
+        <div class="mf-banners" id="manifest-banners">${this.renderBanners(rateCard, missing)}</div>
 
         <div class="manifest-table-wrap">
           <table class="manifest-table" id="manifest-table">
             <thead>
               <tr>
                 ${cols.map(c => `
-                  <th class="${c.sticky ? 'is-sticky' : ''}" style="min-width: ${c.width}px;"
+                  <th class="${this.stickyClass(c, offsets)}"
+                      style="min-width: ${this.columnWidth(c)}px;${c.sticky ? ` left: ${offsets[c.key]}px;` : ''}"
                       ${c.hint ? `title="${escapeHtml(c.hint)}"` : ''}>${escapeHtml(c.label)}</th>
                 `).join('')}
-                <th style="min-width: 68px;"></th>
+                <th style="min-width: 64px;"></th>
               </tr>
             </thead>
             <tbody id="manifest-tbody">
-              ${computed.lines.map((line, i) => this.renderLineRow(state, line, i, cols)).join('')}
+              ${computed.lines.map((line, i) => this.renderLineRow(state, line, i, cols, offsets)).join('')}
             </tbody>
             <tfoot id="manifest-tfoot">
               ${this.renderTotalsRow(computed, cols)}
@@ -247,16 +374,17 @@ export class ManifestsView extends BaseComponent {
           </table>
         </div>
 
-        <div class="flex items-center" style="gap: var(--space-3); margin-top: var(--space-3);">
-          <button class="btn btn-primary btn-sm" id="btn-add-line" title="Thêm dòng, kế thừa lựa chọn của dòng trước">
-            <i data-lucide="plus"></i><span>Thêm dòng</span>
-          </button>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">
-            ${computed.lines.length} dòng. Ô có nền xám là ô hệ thống tự tính — sửa được, khi sửa sẽ đổi màu.
-          </span>
+        <div class="mf-footbar">
+          <div class="mf-footbar-left">
+            <button class="btn btn-primary btn-sm" id="btn-add-line" title="Thêm dòng, kế thừa lựa chọn của dòng trước">
+              <i data-lucide="plus"></i><span>Thêm dòng</span>
+            </button>
+            <span class="mf-hint">
+              ${computed.lines.length} dòng · Ô nền xám là ô hệ thống tự tính — sửa được, khi sửa sẽ đổi màu.
+            </span>
+          </div>
+          ${this.renderSummary(computed)}
         </div>
-
-        ${this.renderSummary(computed)}
       </div>
     `;
   }
@@ -308,12 +436,12 @@ export class ManifestsView extends BaseComponent {
     `;
   }
 
-  renderLineRow(state, line, index, cols) {
+  renderLineRow(state, line, index, cols, offsets) {
     const noRate = line.totalVnd === null;
     return `
       <tr data-index="${index}" class="${noRate ? 'line-no-rate' : ''}">
-        ${cols.map(c => `<td class="${c.sticky ? 'is-sticky' : ''}">${this.renderCellInput(state, line, index, c)}</td>`).join('')}
-        <td>
+        ${cols.map(c => `<td class="${this.stickyClass(c, offsets)}"${this.stickyStyle(c, offsets)}>${this.renderCellInput(state, line, index, c)}</td>`).join('')}
+        <td class="mf-row-actions">
           <button class="btn btn-icon btn-sm btn-dup-line" data-index="${index}" title="Nhân bản dòng">
             <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
           </button>
@@ -375,7 +503,8 @@ export class ManifestsView extends BaseComponent {
 
       case 'description': {
         const text = renderLineDescription(line, this.draft);
-        return `<span class="mf-desc" title="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
+        return `<span class="mf-desc" style="max-width: ${this.columnWidth(col)}px;"
+                  title="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
       }
 
       case 'computed': {
@@ -416,9 +545,10 @@ export class ManifestsView extends BaseComponent {
         default: return '';
       }
     };
+    const offsets = this.stickyOffsets(cols);
     return `
       <tr class="manifest-totals-row">
-        ${cols.map(c => `<td class="${c.sticky ? 'is-sticky' : ''}">${cell(c)}</td>`).join('')}
+        ${cols.map(c => `<td class="${this.stickyClass(c, offsets)}"${this.stickyStyle(c, offsets)}>${cell(c)}</td>`).join('')}
         <td></td>
       </tr>
     `;
@@ -428,20 +558,20 @@ export class ManifestsView extends BaseComponent {
     const t = computed.totals;
     return `
       <div class="manifest-summary" id="manifest-summary">
-        <div class="manifest-summary-row">
-          <span>Tổng tiền (KRW)</span><b class="num-cell">${formatCurrency(t.totalKrw, false)}</b>
+        <div class="manifest-summary-words" title="${escapeHtml(t.amountInWords)}">
+          Bằng chữ: ${escapeHtml(t.amountInWords)}
         </div>
         <div class="manifest-summary-row">
-          <span>Tổng tiền (VND)</span><b class="num-cell">${formatCurrency(t.totalVnd, false)}</b>
+          <span>Tổng KRW</span><b class="num-cell">${formatCurrency(t.totalKrw, false)}</b>
         </div>
         <div class="manifest-summary-row">
-          <span>Thuế GTGT ${t.vatRate}%</span><b class="num-cell">${formatCurrency(t.vatAmount, false)}</b>
+          <span>Tổng VND</span><b class="num-cell">${formatCurrency(t.totalVnd, false)}</b>
+        </div>
+        <div class="manifest-summary-row">
+          <span>GTGT ${t.vatRate}%</span><b class="num-cell">${formatCurrency(t.vatAmount, false)}</b>
         </div>
         <div class="manifest-summary-row is-grand">
-          <span>Tổng giá trị thanh toán</span><b class="num-cell">${formatCurrency(t.grandTotal)}</b>
-        </div>
-        <div class="manifest-summary-words">
-          Bằng chữ: <b>${escapeHtml(t.amountInWords)}</b>
+          <span>Thanh toán</span><b class="num-cell">${formatCurrency(t.grandTotal)}</b>
         </div>
       </div>
     `;
@@ -476,6 +606,15 @@ export class ManifestsView extends BaseComponent {
     qs('#btn-issue-manifest', this.container).onclick = () => this.issue();
     qs('#btn-toggle-extra', this.container).onclick = () => {
       this.showExtraColumns = !this.showExtraColumns;
+      super.mount(stateStore.state);
+    };
+    qs('#btn-toggle-meta', this.container).onclick = () => {
+      this.metaOpen = !this.metaOpen;
+      super.mount(stateStore.state);
+    };
+    qs('#btn-toggle-compact', this.container).onclick = () => {
+      this.compact = !this.compact;
+      localStorage.setItem(STORAGE_KEYS.MANIFEST_COMPACT, this.compact ? '1' : '0');
       super.mount(stateStore.state);
     };
 
@@ -685,6 +824,8 @@ export class ManifestsView extends BaseComponent {
     this.baseUpdatedAt = manifest.updatedAt || null;
     this.dirty = false;
     this.mode = 'edit';
+    this.setFullscreen(true);
+    this.syncHash(`#manifests/${id}`);
     super.mount(stateStore.state);
   }
 
@@ -694,6 +835,8 @@ export class ManifestsView extends BaseComponent {
     this.draft = null;
     this.baseUpdatedAt = null;
     this.dirty = false;
+    this.setFullscreen(false);
+    this.syncHash('#manifests');
     super.mount(stateStore.state);
   }
 

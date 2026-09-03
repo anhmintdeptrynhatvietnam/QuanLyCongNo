@@ -50,9 +50,13 @@ export class Navigation {
   }
 
   static handleHashChange() {
+    // Hash có dạng "#view" hoặc "#view/<tham-so>", ví dụ "#manifests/mf_123" để mở
+    // thẳng một bảng kê ở màn hình nhập toàn màn hình (F5 vẫn ở đúng bảng kê đó).
     const rawHash = window.location.hash.replace("#", "") || "dashboard";
+    const [rawView, ...restSegments] = rawHash.split("/");
+    const routeParam = restSegments.join("/") || null;
     const validViews = ["dashboard", "partners", "invoices", "payment-requests", "payments", "reports", "exchange-rates", "catalogs", "manifests", "settings"];
-    const activeView = validViews.includes(rawHash) ? rawHash : "dashboard";
+    const activeView = validViews.includes(rawView) ? rawView : "dashboard";
 
     // Update active nav class
     qsa(".nav-item").forEach(item => {
@@ -83,7 +87,7 @@ export class Navigation {
     }
 
     if (typeof this.onRouteChange === "function") {
-      this.onRouteChange(activeView);
+      this.onRouteChange(activeView, routeParam);
     }
   }
 

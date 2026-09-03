@@ -49,7 +49,7 @@ class App {
     });
 
     // 3. Khởi tạo Navigation & Router
-    Navigation.init((route) => this.switchView(route));
+    Navigation.init((route, param) => this.switchView(route, param));
 
     // 4. Lắng nghe ô Tìm kiếm toàn cục (Global Search)
     this.initGlobalSearch();
@@ -61,7 +61,7 @@ class App {
     this.initGlobalHotkeys();
   }
 
-  switchView(route) {
+  switchView(route, param = null) {
     if (this.currentViewInstance && typeof this.currentViewInstance.destroy === "function") {
       this.currentViewInstance.destroy();
     }
@@ -69,7 +69,14 @@ class App {
     const nextView = this.views[route] || this.views.dashboard;
     this.currentViewInstance = nextView;
     stateStore.state.activeView = route;
-    nextView.mount(stateStore.state);
+
+    // View nào hiểu tham số route thì tự quyết định render gì (ManifestsView mở
+    // thẳng bảng kê theo id); các view còn lại giữ nguyên đường mount cũ.
+    if (typeof nextView.applyRoute === "function") {
+      nextView.applyRoute(param, stateStore.state);
+    } else {
+      nextView.mount(stateStore.state);
+    }
   }
 
   initGlobalSearch() {

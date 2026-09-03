@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   CATALOGS: "qlcn_catalogs_v1",
   RATE_CARDS: "qlcn_rate_cards_v1",
   MANIFESTS: "qlcn_manifests_v1",
+  MANIFEST_COMPACT: "qlcn_manifest_compact_v1",
   AUDIT_LOGS: "qlcn_audit_logs_v1",
   THEME: "qlcn_theme_mode",
   CURRENT_USER: "qlcn_current_user_v1"
@@ -337,34 +338,38 @@ export const MANIFEST_STATUS_LABELS = {
  *   text / select / date / checkbox -> như tên gọi
  *
  * `extra: true` = cột file mẫu để trống toàn bộ, gom vào nhóm ẩn được cho gọn bảng.
+ *
+ * `width` / `compactWidth` = bề rộng tối thiểu của cột ở chế độ thường và chế độ nén.
+ * Bảng cần ~2552px ở chế độ thường, vẫn quá màn 1920 kể cả khi đã ẩn sidebar, nên màn
+ * hình nhập chạy toàn màn hình và mặc định bật chế độ nén (~1944px).
  */
 export const MANIFEST_COLUMNS = [
-  { key: "no", label: "NO", kind: "readonly", width: 44, sticky: true },
-  { key: "date", label: "DATE", kind: "date", width: 130, sticky: true },
-  { key: "blNo", label: "B/L NO", kind: "text", width: 120, sticky: true },
-  { key: "description", label: "Diễn giải", kind: "description", width: 240 },
-  { key: "flightCode", label: "Mã CB", kind: "select", source: "flights", width: 96 },
-  { key: "itemsText", label: "ITEMS", kind: "text", width: 150 },
-  { key: "shipperId", label: "SHIPPER", kind: "select", source: "shippers", width: 190 },
-  { key: "customsCleared", label: "TQ", kind: "checkbox", width: 52,
+  { key: "no", label: "NO", kind: "readonly", width: 44, compactWidth: 40, sticky: true },
+  { key: "date", label: "DATE", kind: "date", width: 130, compactWidth: 120, sticky: true },
+  { key: "blNo", label: "B/L NO", kind: "text", width: 120, compactWidth: 96, sticky: true },
+  { key: "description", label: "Diễn giải", kind: "description", width: 240, compactWidth: 140 },
+  { key: "flightCode", label: "Mã CB", kind: "select", source: "flights", width: 96, compactWidth: 76 },
+  { key: "itemsText", label: "ITEMS", kind: "text", width: 150, compactWidth: 100 },
+  { key: "shipperId", label: "SHIPPER", kind: "select", source: "shippers", width: 190, compactWidth: 124 },
+  { key: "customsCleared", label: "TQ", kind: "checkbox", width: 52, compactWidth: 44,
     hint: "Bật = thông quan (TQ), cộng phí giám sát tờ khai. Tắt = KTQ." },
-  { key: "consigneeId", label: "CONSIGNEE", kind: "select", source: "consignees", width: 200 },
-  { key: "mode", label: "MODE", kind: "readonly", width: 60 },
-  { key: "pol", label: "POL", kind: "select", source: "ports", width: 80 },
-  { key: "pod", label: "POD", kind: "select", source: "ports", width: 80 },
-  { key: "ct", label: "C/T", kind: "integer", width: 64 },
-  { key: "gwt", label: "G.W/T", kind: "decimal", width: 80 },
-  { key: "cwt", label: "C.WT", kind: "decimal", width: 80 },
-  { key: "freightCharge", label: "FREIGHT (KRW)", kind: "computed", width: 118 },
-  { key: "deliveryCharge", label: "DELIVERY (KRW)", kind: "currency", width: 118 },
-  { key: "fuel", label: "FUEL", kind: "currency", width: 100, extra: true },
-  { key: "customsCharge", label: "CUSTOMS", kind: "currency", width: 100, extra: true },
-  { key: "pickFee", label: "PHÍ PICK (VND)", kind: "currency", width: 110, extra: true },
-  { key: "declarationSupervisionFee", label: "PHÍ GIÁM SÁT (VND)", kind: "computed", width: 130 },
-  { key: "totalKrw", label: "TOTAL (KRW)", kind: "computed", width: 118 },
-  { key: "exchangeRate", label: "Tỷ giá", kind: "computed", width: 84 },
-  { key: "totalVnd", label: "TOTAL (VND)", kind: "computed", width: 130 },
-  { key: "remark", label: "REMARK", kind: "text", width: 120 }
+  { key: "consigneeId", label: "CONSIGNEE", kind: "select", source: "consignees", width: 200, compactWidth: 124 },
+  { key: "mode", label: "MODE", kind: "readonly", width: 60, compactWidth: 52 },
+  { key: "pol", label: "POL", kind: "select", source: "ports", width: 80, compactWidth: 66 },
+  { key: "pod", label: "POD", kind: "select", source: "ports", width: 80, compactWidth: 66 },
+  { key: "ct", label: "C/T", kind: "integer", width: 64, compactWidth: 54 },
+  { key: "gwt", label: "G.W/T", kind: "decimal", width: 80, compactWidth: 66 },
+  { key: "cwt", label: "C.WT", kind: "decimal", width: 80, compactWidth: 66 },
+  { key: "freightCharge", label: "FREIGHT (KRW)", kind: "computed", width: 118, compactWidth: 96 },
+  { key: "deliveryCharge", label: "DELIVERY (KRW)", kind: "currency", width: 118, compactWidth: 96 },
+  { key: "fuel", label: "FUEL", kind: "currency", width: 100, compactWidth: 80, extra: true },
+  { key: "customsCharge", label: "CUSTOMS", kind: "currency", width: 100, compactWidth: 80, extra: true },
+  { key: "pickFee", label: "PHÍ PICK (VND)", kind: "currency", width: 110, compactWidth: 88, extra: true },
+  { key: "declarationSupervisionFee", label: "PHÍ GIÁM SÁT (VND)", kind: "computed", width: 130, compactWidth: 100 },
+  { key: "totalKrw", label: "TOTAL (KRW)", kind: "computed", width: 118, compactWidth: 100 },
+  { key: "exchangeRate", label: "Tỷ giá", kind: "computed", width: 84, compactWidth: 74 },
+  { key: "totalVnd", label: "TOTAL (VND)", kind: "computed", width: 130, compactWidth: 108 },
+  { key: "remark", label: "REMARK", kind: "text", width: 120, compactWidth: 88 }
 ];
 
 /**
